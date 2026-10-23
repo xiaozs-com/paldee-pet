@@ -84,6 +84,8 @@ class ComponentAcceptance(unittest.TestCase):
         cls.manifest = json.loads(
             (OPTIONS.package_root / "latest-macos-x86_64.json").read_text(encoding="utf-8")
         )
+        cls.platform_id = cls.manifest["platform"]
+        cls.cpu_type = packager.MACOS_PLATFORMS[cls.platform_id]
         cls.catalog = json.loads(
             (OPTIONS.package_root / "catalog-entry-macos-x86_64.json").read_text(encoding="utf-8")
         )
@@ -133,7 +135,9 @@ class ComponentAcceptance(unittest.TestCase):
         cls.temporary.cleanup()
 
     def test_archive_metadata_architecture_and_allowlist(self):
-        result = packager.validate_archive(self.archive, self.manifest, self.catalog)
+        result = packager.validate_archive(
+            self.archive, self.manifest, self.catalog, self.platform_id, self.cpu_type
+        )
         self.assertEqual(result["entry"], packager.ENTRY)
         with zipfile.ZipFile(self.archive) as bundle:
             metadata = json.loads(bundle.read("component.json"))
@@ -307,9 +311,14 @@ class ComponentAcceptance(unittest.TestCase):
             dict(self.manifest, sha256="0" * 64),
         ]:
             with self.assertRaises(ValueError):
-                packager.validate_archive(self.archive, manifest, self.catalog)
+                packager.validate_archive(
+                    self.archive, manifest, self.catalog, self.platform_id, self.cpu_type
+                )
         with self.assertRaises(ValueError):
-            packager.validate_archive(self.archive, self.manifest, dict(self.catalog, id="other"))
+            packager.validate_archive(
+                self.archive, self.manifest, dict(self.catalog, id="other"),
+                self.platform_id, self.cpu_type,
+            )
         # A thin Mach-O with a non-x86_64 CPU type must be rejected at packaging time.
         path = self.root / "arm64-fixture"
         data = bytearray(8)
@@ -317,11 +326,12 @@ class ComponentAcceptance(unittest.TestCase):
         struct.pack_into("<I", data, 4, CPU_TYPE_ARM64)
         path.write_bytes(data)
         self.assertEqual(packager.macho_cpu_type(path), CPU_TYPE_ARM64)
-        with self.assertRaisesRegex(ValueError, "Only macOS x86_64 is supported"):
+        with self.assertRaisesRegex(ValueError, "Only macos-x86_64 executables are supported"):
             packager.package(
                 argparse.Namespace(
                     version=self.manifest["version"],
                     base_url="https://www.xiaozs.com/sah/components/paldee-pet",
+                    platform="macos-x86_64",
                     pet=path,
                     bridge=self.installation / packager.BRIDGE,
                     bridge_root=self.installation,

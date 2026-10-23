@@ -35,8 +35,11 @@ case "$arch" in
 esac
 
 # Cross-compiling needs the rust target installed; fail early with a clear hint.
-if ! rustc --print target-list | grep -qx "$target"; then
-  echo "rust target $target not available; install with: rustup target add $target" >&2
+# (rustc --print target-list lists every target rustc knows, installed or not;
+# the rustlib directory only exists for targets actually installed.)
+sysroot="$(rustc --print sysroot)"
+if [[ ! -d "$sysroot/lib/rustlib/$target" ]]; then
+  echo "rust target $target not installed; install with: rustup target add $target" >&2
   exit 2
 fi
 
