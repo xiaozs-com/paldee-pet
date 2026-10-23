@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Cover the complete hand outlines in typing frames so raised-hand lines do not remain on the face.
+
 - Kept the component host alive when startup and status clients overlap by allowing the named-pipe default instance limit.
 
 - Bounded retries for transient start/status pipe closures during concurrent component startup.
@@ -18,6 +20,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PD bridge: browser CLI commands now pass through all bridge layers; proxy failures report their cause instead of a generic unavailable message.
 
 ### Changed
+
+- Refer to 小助手 in the pet chat menu and message input placeholder.
+
+- Tighten application icon padding and replace both tray template resolutions with the Taiji mascot silhouette.
+
+- Use the typing Taiji mascot for native application icons and remove a stray mark from its face.
+
+- Use the supplied Paldee SVG logo at 10% opacity for the empty chat window on Windows and macOS.
+
+- Replace built-in Peek/Type artwork with fixed-body Taiji animations; use the supplied white laptop logo. Retire the separate Taiji option and map existing selections to Peek.
+
+- Paldee Pet 0.2.4 includes read-only Windows diagnostics and a double-click launcher in the component package.
 
 - Rename project packages, native crate and build executable to paldee-pet; retain stable component and user-data identifiers.
 

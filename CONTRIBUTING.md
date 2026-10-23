@@ -2,6 +2,10 @@
 
 Thank you for your interest in contributing! **Octop Pet** is the desktop companion client for [Octop](https://github.com/TencentCloud/Octop) — a floating mascot, compact chat window, and system tray shell built with Tauri 2 and React.
 
+Before changing upstream-derived code, read the [exact source baselines and upgrade checklist](docs/upstream-sync/SOURCE_BASELINES.md). Record the upstream repository, version/tag, full commit, local patch scope, and verification results for each upgrade; the Pet fork and Octop server have separate baselines.
+
+Maintain the [source customization register](docs/upstream-sync/SOURCE_CHANGES.md) whenever changing upstream-derived code or branding assets. Record the affected files, reason, platform scope, verification, and commit once available.
+
 ## Getting started
 
 **Prerequisites:** Node.js LTS, Rust (stable), [Tauri platform deps](https://tauri.app/start/prerequisites/)

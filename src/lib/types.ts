@@ -1,4 +1,4 @@
-export type MascotId = "peek" | "type" | "taiji-bot";
+export type MascotId = "peek" | "type";
 
 export interface AppConfig {
   baseUrl: string;

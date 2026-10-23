@@ -1,3 +1,17 @@
+# 当前内置形象（2026-10-23）
+
+当前客户端直接使用上级目录的 peek.webp 和 type.webp，默认 peek，不再提供独立 taiji-bot 选项。旧配置中的 taiji-bot 加载为 peek，其他设置保留。
+
+peek-type-source.png 是本次透明动作图集；laptop-logo-white.png 是用户提供的 pd_白色.png 原图副本，缩放后合成在固定的电脑盖上，不重新绘制 Logo。Peek 只改变眼睛；Type 只改变手部；主体和电脑不晃动。
+
+type-face-cleanup.png 用于修正原图嘴巴左下方的青色小痕迹。导出脚本仅取其中下巴附近 28×28 像素的修复区域，保留其余原始形象及 Logo，不使用整张修复图替换动画。
+
+在仓库根目录运行 `python scripts/build_mascot_assets.py`（需要 FFmpeg），生成 Peek 352×320、Type 856×812 的四帧透明循环 WebP、静态 PNG 和 mascot-assets.json。清单记录来源及 Logo 的 SHA256、动作范围和逐帧时长。
+
+以下为旧素材归档说明；旧 preview.html、八状态文件和旧 SVG 眨眼方案不再代表当前客户端。
+
+---
+
 # 太极机器人：OctopPet 半身素材包 v1
 
 包含高分辨率半身主形象 hero.png、32 帧图集 spritesheet.png、8 种状态的静态 PNG 和循环动画 WebP、manifest.json、可离线打开的 preview.html。

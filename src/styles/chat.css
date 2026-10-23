@@ -233,9 +233,9 @@ html[data-window-label="chat"] *::-webkit-scrollbar-button {
   max-width: min(8rem, 60%);
   max-height: 42%;
   object-fit: contain;
-  /* SVG-as-image is black; invert so it reads as a gray lighter than #1c1c1e. */
+  /* Invert the black logo so it reads as gray on the dark background. */
   filter: invert(1);
-  opacity: 0.28;
+  opacity: 0.1;
 }
 
 .message {

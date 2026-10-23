@@ -1,6 +1,8 @@
 # Paldee Pet 品牌与上游同步流程
 
-记录日期：2026-10-08。本仓库继续独立维护，不向小助手仓库复制源码。
+逐项修改、文件范围和验收边界见 [原项目源码修改清单](SOURCE_CHANGES.md)。后续修改源码时同步更新清单，升级上游时按编号核对。
+
+记录日期：2026-10-08；上游身份与基线于 2026-10-23 核对更新，见 [精确源码基线](SOURCE_BASELINES.md)。本仓库继续独立维护，不向小助手仓库复制源码。
 
 ## 修改边界
 
@@ -8,26 +10,45 @@
 `src/lib/brand.ts` 提供前端名称，设置页和页面标题读取它；托盘读取 Tauri 配置；组件打包器同样读取该字段。
 聊天原生窗口标题在同一配置中显式设置为 Paldee Pet；修改品牌时同时核对它。宠物窗口空标题保留，避免 Windows 残留标题条。
 
-保留 `com.octop.pet` 应用/凭据标识、`octoppet` 组件 ID、`octoppet-component@1` 和 `pd-chat-cli@2` 协议；独立用户数据路径保持不变。不要把远程 Octop 服务名称全部替换成 Paldee。图标本次保留；以后品牌资源放在独立目录，按打包配置接入。原作者版权、LICENSE 和上游来源不得删除。
+保留 `com.octop.pet` 应用/凭据标识、`octoppet` 组件 ID、`octoppet-component@1` 和 `pd-chat-cli@2` 协议；独立用户数据路径保持不变。不要把远程 Octop 服务名称全部替换成 Paldee。应用图标和托盘形象已替换；品牌资源按现有打包配置接入。原作者版权、LICENSE 和上游来源不得删除。
 
-| 扩展         | 独立文件                                     | 合并时检查的已有文件                                             |
-| ------------ | -------------------------------------------- | ---------------------------------------------------------------- |
-| 品牌         | src/lib/brand.ts、本说明                     | tauri.conf.json、main.tsx、SettingsWindow.tsx、tray.rs、打包脚本 |
-| 聊天桥接     | pdChatBridge.ts、pd_bridge_cmd.rs            | useChatController.ts、tauriApi.ts、lib.rs                        |
-| 可选组件     | component_runtime.rs、scripts/_pd_component_ | Cargo.toml/lock、lib.rs、config_cmd.rs、secrets_cmd.rs           |
-| 太极眼睛动画 | mascot.css、MascotImage.test.tsx             | MascotImage.tsx                                                  |
+| 扩展         | 独立文件                                        | 合并时检查的已有文件                                                                       |
+| ------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| 品牌         | src/lib/brand.ts、本说明                        | tauri.conf.json、main.tsx、SettingsWindow.tsx、tray.rs、打包脚本                           |
+| 聊天桥接     | pdChatBridge.ts、pd_bridge_cmd.rs               | useChatController.ts、tauriApi.ts、lib.rs                                                  |
+| 可选组件     | component_runtime.rs、scripts/_pd_component_    | Cargo.toml/lock、lib.rs、config_cmd.rs、secrets_cmd.rs                                     |
+| 内置形象替换 | public/mascots/、scripts/build_mascot_assets.py | MascotImage.tsx、types.ts、configLogic.ts、SettingsWindow.tsx、config_cmd.rs（旧 ID 迁移） |
+
+应用图标采用清理后的 `public/mascots/type.png`。`scripts/build_app_icons.ps1` 先裁掉多余透明边距，再以约 3% 的安全边距生成 `assets/octop-app-icon.png` 及 `src-tauri/icons/` 的桌面、iOS、Android 配套图标。Windows 任务栏使用 `icon.ico`；托盘使用同一人物的黑色剪影 `tray-template.png`（32×32）及 `tray-template@2x.png`（64×64）。当前 Rust 托盘接线直接引用普通版，因此必须同步生成两份。
+
+在仓库根目录执行（需要 FFmpeg）：
+
+```powershell
+python scripts/build_mascot_assets.py
+./scripts/build_app_icons.ps1
+```
+
+原生图标变更需重新编译并重启程序。`src-tauri/build.rs` 监视 `icons` 目录，保证增量构建会重新嵌入新图标。
+
+## macOS 同步（2026-10-23）
+
+Windows 和 macOS 共用同一套前端、形象配置与 Rust 配置迁移逻辑，默认 Peek，设置只显示 Peek/Type。聊天空白页使用用户提供的矢量 `src/assets/logo.svg`，不透明度统一为 10%。固定主体动画、Type 下巴修复和手部残线修复均随同一份 `public/mascots/` 打包。
+
+macOS 应用图标为本轮同步生成的 `src-tauri/icons/icon.icns`；菜单栏使用已更新的单色托盘模板，并保留 `icon_as_template(true)`。现有发布矩阵覆盖 Apple Silicon 和 Intel，无须维护另一份 Mac 形象或前端源码。生成后的图标已入源码工作区，Mac 构建可直接使用，无需运行 Windows 图标脚本。
+
+Windows 本地检查不能替代 Mac 验收。本轮尚未构建、安装或发布 Mac 包。后续在真实 Mac 上检查：Peek/Type 动画、聊天空白标志、Dock/Finder 应用图标、菜单栏浅色/深色效果，以及宠物窗口焦点切换后的透明背景。
 
 ## 第一次同步前
 
-当前 origin 是自有仓库 https://github.com/xiaozs-com/OctopPet.git。尚未配置 upstream，且为浅克隆。先从原项目页面确认 **OctopPet 原仓库 URL 和默认分支**；不要把 Octop 服务端仓库或 origin 当作 Pet 上游。本次没有新增远端、联网拉取、合并或提交。
+当前 origin 是自有 fork https://github.com/xiaozs-com/paldee-pet.git。已通过 GitHub parent/source 和固定提交比较核实原上游为 https://github.com/jubaoliang/OctopPet.git，默认分支 master，当前 fork 的上游共同祖先为 `4ed0711cbd19d29341656317cb4e526bd59789d1`，该提交包版本 0.2.0。尚未在本地配置 upstream，且本地仍为浅克隆。此前已核对来源；2026-10-23 本地按固定 SHA 取回原上游对象，并快进合入自有远端的四项 Mac 支持提交；未增加 upstream remote。不要把 Octop 服务端仓库、origin、本地浅克隆起点或组件补丁导出基线当作 Pet 上游。
 
-以下命令在仓库目录的 PowerShell 执行；尖括号是待填内容，不能直接照抄执行。
+以下命令在仓库目录的 PowerShell 执行；上游分支名未来仍需核实，后续示例中的尖括号必须按当次情况填写。
 
 ```powershell
 git status --short
 git remote -v
 git rev-parse --is-shallow-repository
-git remote add upstream <确认的-OctopPet-仓库URL>
+git remote add upstream https://github.com/jubaoliang/OctopPet.git
 git fetch upstream
 ```
 
@@ -57,7 +78,7 @@ powershell -ExecutionPolicy Bypass -File scripts/check-windows.ps1
 git diff --check
 ```
 
-5. 验证设置页名称、托盘提示、聊天、太极仅眼睛动画；按 `docs/OCTOPPET_COMPONENT.md` 构建并运行组件验收。用户数据、重复启动、停止、异常退出、中文空格路径都必须通过。Mac 手工测试需另行执行，Windows 通过不代表 Mac 通过。
+5. 验证设置页名称、托盘提示、聊天、Peek 仅眨眼、Type 仅手部动画及白色电脑 Logo；按 `docs/OCTOPPET_COMPONENT.md` 构建并运行组件验收。用户数据、重复启动、停止、异常退出、中文空格路径都必须通过。Mac 手工测试需另行执行，Windows 通过不代表 Mac 通过。
 6. 更新 CHANGELOG、同步日期/上游提交/冲突位置/测试结果，审查后由维护者提交。合并回维护分支、push 和发布是单独步骤；源码同步不等于发布安装包。
 
 合并期间要放弃时用 `git merge --abort`，返回原维护分支；恢复分支留存。已结束合并后不要对有工作改动的目录执行 reset；先保存工作，再从恢复分支创建新的工作分支。

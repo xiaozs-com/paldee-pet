@@ -1,3 +1,5 @@
+> 当前 Windows 本地组件交付为 [0.2.5](PALDEE_PET_0.2.5_RELEASE.md)，含新形象/图标和只读诊断工具；以下较早版本示例仅说明协议与实现历史。源码 origin 为 https://github.com/xiaozs-com/paldee-pet.git。
+
 # Paldee Pet：PD 小助手独立可选组件
 
 本次以用户提供的《PD 小助手外部功能组件接入规范》为准：
@@ -151,3 +153,7 @@ macOS 验收测试 `scripts/test_pd_component_macos.py` 镜像 Windows 的 `test
 组件清单与全局目录的 Ed25519 签名属于小助手项目的产品发布步骤，使用独立小助手仓库的受信任发布私钥（key_id `xiaozs-components-2026-01`）；客户端用小助手内置公钥 `EUlug4+wmNeU6MVKjjC1/9cSygyWsSAeEVAHaw13Pqk=` 验签。本仓库刻意不持有、不读取、不复制、不提交该私钥；打包器只产出 `"signature": "pending"` 的未签名清单与 catalog 条目。
 
 签名工具为小助手仓库的 `packaging/sign_component_manifest.py`（依赖 `cryptography`）。流程：先签名平台清单 `latest-{platform}.json`；新增平台时还需下载服务器当前 `catalog.json`，合并新平台清单地址后用同一工具重签整个全局目录。两个产物都要用小助手 `components/signatures.verify_manifest` 复核通过后再上传。签名可在具备私钥的受控机器（含本机）执行；私钥不得进入任何上传文件或提交。
+
+## 随组件交付的 Windows 诊断
+
+后续组件 ZIP 必须同时包含 diagnose-pet-windows.ps1 和 diagnose-pet-windows.cmd。安装后在组件版本目录双击 CMD 可查看系统、显卡、窗口位置及宠物布局配置；工具只读，不采集密码、聊天、窗口标题或截图，不上传、不改设置。无需另外下载脚本。已有发布包不覆盖；本轮隔离验收包仅验证诊断工具随包交付，后续新版本发布后现有用户才能通过更新获取。

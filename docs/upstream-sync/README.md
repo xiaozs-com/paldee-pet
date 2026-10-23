@@ -1,3 +1,5 @@
+> 当前逐项改动以 [原项目源码修改清单](SOURCE_CHANGES.md) 为入口；版本与来源见 [开源基线与升级同步](SOURCE_BASELINES.md) 和 [机器可读基线](source-baselines.json)（2026-10-23）。下文是历史记录；当前共享桥接修改 ws.py 与 manager.py，不能沿用旧的单文件/仅私有专家说明。
+
 > 2026-10-08：组件发布方案已按用户提供规范整改，当前以 [OctopPet 标准组件记录](../OCTOPPET_COMPONENT.md) 为准。本文中的 pd-device-bridge 宠物包 ID、全局目录合并和旧上传包仅为历史记录。
 
 # PD 扩展：原源码修改与上游同步记录

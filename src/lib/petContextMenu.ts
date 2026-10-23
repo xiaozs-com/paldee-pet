@@ -7,7 +7,7 @@ export async function showPetContextMenu(): Promise<void> {
     items: [
       await MenuItem.new({
         id: "pet-chat",
-        text: "与 Octop 对话",
+        text: "与小助手对话",
         action: () => {
           void tauriApi
             .showChatNearPet()

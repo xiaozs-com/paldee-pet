@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "default": "peek",
+  "source": "taiji-bot/peek-type-source.png",
+  "sourceSha256": "9575d77b670ade8ed7634133549c220ced1c20c2cf6ebedbb4e23615846a351a",
+  "laptopLogo": "taiji-bot/laptop-logo-white.png",
+  "laptopLogoSha256": "e0ea858624107eea1c2cffc9785b08d3e10d25b9f2514068a9f944d2bd5551cf",
+  "faceCleanup": "taiji-bot/type-face-cleanup.png",
+  "faceCleanupSha256": "9874442d965dce121e2680ec0a1dac07cf3638563d2ac3384d5ed3941aa48337",
+  "assets": {
+    "peek": {
+      "row": 0,
+      "size": [352, 320],
+      "duration": [2800, 80, 120, 80],
+      "regions": [
+        [114, 210, 80, 84],
+        [250, 210, 80, 84]
+      ],
+      "animation": "peek.webp",
+      "poster": "peek.png",
+      "loop": 0,
+      "fixedBody": true,
+      "sha256": "fb293eaaaa1f87d94ce903e7a6a9486f4b31662f34c42b6f38ceda978a0604d4"
+    },
+    "type": {
+      "row": 1,
+      "size": [856, 812],
+      "duration": [160, 160, 160, 160],
+      "regions": [
+        [96, 232, 116, 78],
+        [235, 248, 116, 62]
+      ],
+      "animation": "type.webp",
+      "poster": "type.png",
+      "loop": 0,
+      "fixedBody": true,
+      "sha256": "db98cb0bef2c753a49e9852ff69eff9de68d8fde86fb25853e1de29f9740cf03"
+    }
+  }
+}

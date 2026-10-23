@@ -23,7 +23,7 @@ describe("Composer", () => {
       />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText("和 Octop 说点什么"), {
+    fireEvent.change(screen.getByPlaceholderText("和小助手说点什么"), {
       target: { value: "  hello  " },
     });
     fireEvent.click(screen.getByRole("button", { name: "发送" }));
@@ -49,7 +49,7 @@ describe("Composer", () => {
       />,
     );
 
-    fireEvent.change(screen.getByPlaceholderText("和 Octop 说点什么"), {
+    fireEvent.change(screen.getByPlaceholderText("和小助手说点什么"), {
       target: { value: "queued" },
     });
     fireEvent.click(screen.getByRole("button", { name: "加入队列" }));

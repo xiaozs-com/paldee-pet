@@ -60,8 +60,8 @@ fn tray_mascot_selection_updates_only_supported_mascots() {
     select_mascot(&mut cfg, "type").unwrap();
     assert_eq!(cfg.mascot_id, "type");
 
-    select_mascot(&mut cfg, "taiji-bot").unwrap();
-    assert_eq!(cfg.mascot_id, "taiji-bot");
+    assert!(select_mascot(&mut cfg, "taiji-bot").is_err());
+    assert_eq!(cfg.mascot_id, "type");
 
     select_mascot(&mut cfg, "peek").unwrap();
     assert_eq!(cfg.mascot_id, "peek");
@@ -89,6 +89,30 @@ fn config_file_defaults_when_missing_and_round_trips() {
     save_to_path(&path, &cfg).unwrap();
     assert_eq!(load_from_path(&path).unwrap(), cfg);
 
+    fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn retired_taiji_mascot_loads_as_peek_without_changing_other_settings() {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let dir = std::env::temp_dir().join(format!("paldee-pet-mascot-{unique}"));
+    let path = dir.join("config.json");
+    let original = AppConfig {
+        mascot_id: "taiji-bot".into(),
+        username: "alice".into(),
+        pet_x: Some(42.5),
+        ..AppConfig::default()
+    };
+    save_to_path(&path, &original).unwrap();
+    let before = fs::read(&path).unwrap();
+    let loaded = load_from_path(&path).unwrap();
+    assert_eq!(loaded.mascot_id, "peek");
+    assert_eq!(loaded.username, original.username);
+    assert_eq!(loaded.pet_x, original.pet_x);
+    assert_eq!(fs::read(&path).unwrap(), before);
     fs::remove_dir_all(dir).unwrap();
 }
 

@@ -47,7 +47,7 @@ impl Default for AppConfig {
 
 pub fn select_mascot(cfg: &mut AppConfig, mascot_id: &str) -> Result<(), String> {
     match mascot_id {
-        "peek" | "type" | "taiji-bot" => {
+        "peek" | "type" => {
             cfg.mascot_id = mascot_id.to_string();
             Ok(())
         }
@@ -62,8 +62,13 @@ pub fn load_from_path(path: &Path) -> Result<AppConfig, String> {
 
     let json = fs::read_to_string(path)
         .map_err(|error| format!("failed to read config {}: {error}", path.display()))?;
-    serde_json::from_str(&json)
-        .map_err(|error| format!("failed to parse config {}: {error}", path.display()))
+    let mut cfg: AppConfig = serde_json::from_str(&json)
+        .map_err(|error| format!("failed to parse config {}: {error}", path.display()))?;
+    // Keep existing users on the default asset after retiring the extra mascot ID.
+    if cfg.mascot_id == "taiji-bot" {
+        cfg.mascot_id = "peek".into();
+    }
+    Ok(cfg)
 }
 
 pub fn save_to_path(path: &Path, cfg: &AppConfig) -> Result<(), String> {

@@ -9,16 +9,20 @@ index dce055b9974c456ce4eec44abc1da5f2a08612ef..d3c782dae31ea5c7fc19e4fe952f2a5c
 +build/component-release/
 diff --git a/docs/OCTOPPET_COMPONENT.md b/docs/OCTOPPET_COMPONENT.md
 new file mode 100644
-index 0000000000000000000000000000000000000000..18e07a1da20b6ec383ef2f44f4eec30d606f4a38
+index 0000000000000000000000000000000000000000..576eacac4ef964d82d23929824a1a112212458b0
 --- /dev/null
 +++ b/docs/OCTOPPET_COMPONENT.md
-@@ -0,0 +1,102 @@
+@@ -0,0 +1,159 @@
++> 当前 Windows 本地组件交付为 [0.2.5](PALDEE_PET_0.2.5_RELEASE.md)，含新形象/图标和只读诊断工具；以下较早版本示例仅说明协议与实现历史。源码 origin 为 https://github.com/xiaozs-com/paldee-pet.git。
++
 +# Paldee Pet：PD 小助手独立可选组件
 +
 +本次以用户提供的《PD 小助手外部功能组件接入规范》为准：
 +D:/ai/screen-automation-cua-component/build/helper-cua-integration/docs/EXTERNAL_COMPONENT_PACKAGING.md。
-+首版 ID 为 octoppet，组件与程序版本为 0.2.3；只支持实际构建的 Windows x64。
++首版 ID 为 octoppet，组件与程序版本为 0.2.3；支持 Windows x64 与 macOS x86_64（darwin）两个平台。
 +旧的 pd-device-bridge 宠物组件打包方案、全局目录合并工具和相关上传包已退役，不能用于本次发布。
++
++> 2026-10-10：新增 macOS x86_64 平台。两个平台共用同一 octoppet 组件 ID 与 `octoppet-component@1` 运行协议，仅在传输原语（Windows 命名管道 / macOS Unix 域套接字）和可执行格式上不同。参见文末「macOS 平台差异」。
 +
 +## 仓库、程序及用户数据
 +
@@ -76,23 +80,46 @@ index 0000000000000000000000000000000000000000..18e07a1da20b6ec383ef2f44f4eec30d
 +
 +## 构建与打包
 +
++Windows x64：
++
 +```powershell
 +powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build_pd_component.ps1 -BridgeRoot D:/ai/screen-automation-device-bridge
 +```
 +
-+需已有 Node、Rust/MSVC、WebView2 和离线依赖缓存；脚本不安装这些工具。发布 ZIP 按固定白名单放入两个 EXE、component.json、根 LICENSE 与 licenses/ 文本，不遍历 target、缓存或用户目录。桥接采用静态 CRT，两个程序只直接导入系统 DLL，仍需系统已安装 WebView2 Runtime。PE 架构须为 AMD64，入口 status 的实际版本和运行协议也会检查。
++macOS x86_64（需在原生 x86_64 机器上执行）：
 +
-+输出在 build/component-release/paldee-pet/：0.2.3/paldee-pet-0.2.3-windows-x64.zip、latest-windows-x64.json、catalog-entry.json，以及未签名清单备份与本地校验报告。
++```bash
++bash scripts/build_pd_component_macos.sh <screen-automation-device-bridge 根目录> [输出目录]
++```
 +
-+component.json 使用规范字段。catalog-entry.json 是稳定的单条目录，只提供组件身份、分类和各平台清单地址，不包含 version/entry。版本、入口、大小和 SHA-256 由 latest 清单管理，并与 ZIP 内 component.json 核对。没有 components 数组或全局签名，不生成 catalog.json。普通版本更新只需上传 ZIP 和已签名的 latest 清单；新增组件或修改目录信息时才合并并重新签署全局目录。Paldee Pet 与 Cua 统一归入“交互增强”。
++脚本依次执行 `npm run tauri build -- --no-bundle` 与 `cargo build --release --locked --target x86_64-apple-darwin --manifest-path <bridge>/native/Cargo.toml`，再调用 `scripts/package_pd_component_macos.py` 打包。桥接二进制已是 release 产物时，可直接调用打包器跳过重编：
 +
-+latest-windows-x64.json 当前是未签名清单。签名前留存 latest-windows-x64.unsigned.json；由受控产品发布环境签名。仓库脚本不读取、创建、复制、输出或提交产品私钥。没有签名的清单不能在线安装，不得误当正式清单上传。
++```bash
++python3 scripts/package_pd_component_macos.py \
++  --pet src-tauri/target/release/octop-pet \
++  --bridge <bridge>/native/target/x86_64-apple-darwin/release/pd-device-bridge \
++  --bridge-root <bridge>
++```
++
++需已有 Node、Rust 与离线依赖缓存；脚本不安装这些工具。Windows 发布 ZIP 按固定白名单放入两个 EXE、component.json、根 LICENSE 与 licenses/ 文本，不遍历 target、缓存或用户目录。桥接采用静态 CRT，两个程序只直接导入系统 DLL，仍需系统已安装 WebView2 Runtime。PE 架构须为 AMD64，入口 status 的实际版本和运行协议也会检查。macOS 打包器额外校验两个可执行文件为 x86_64 Mach-O（`CPU_TYPE_X86_64`）且无非系统动态库依赖（`otool -L`），并以 `create_system=3` 配合 `external_attr` 记录可执行位（0o755），因为归档解包可能丢失嵌套二进制的可执行位、需安装器恢复。
++
++输出在 build/component-release/paldee-pet/：版本目录下 `{id}-{version}-{platform}.zip`、`latest-{platform}.json`、（macOS）`catalog-entry-{platform}.json`，以及未签名清单备份与本地校验报告。
++
++component.json 使用规范字段。catalog 条目是稳定的单条目录，只提供组件身份、分类和各平台清单地址，不包含 version/entry。版本、入口、大小和 SHA-256 由 latest 清单管理，并与 ZIP 内 component.json 核对。打包器本身不生成 catalog.json、不带全局签名。普通版本更新只需上传 ZIP 和已签名的 latest 清单；新增组件或新增平台（如本次 macOS）需把新平台清单地址合并进服务器当前 catalog.json 并重新签署全局目录。Paldee Pet 与 Cua 统一归入“交互增强”。
++
++latest-{platform}.json 由打包器产出时为未签名清单。签名前留存 latest-{platform}.unsigned.json；由受控产品发布环境签名。仓库脚本不读取、创建、复制、输出或提交产品私钥。没有签名的清单不能在线安装，不得误当正式清单上传。签名流程见 [组件发布与源码同步](upstream-sync/COMPONENT_RELEASE.md)。
 +
 +## 人工上传边界
 +
-+仅由用户上传到 /www/wwwroot/xiaozs/sah/components/paldee-pet/：先版本目录下 ZIP，再验证公开下载字节数和 SHA-256，最后上传已签名的 latest-windows-x64.json。
++服务器公开根目录为 /www/wwwroot/xiaozs/sah/components/（即 https://www.xiaozs.com/sah/components/ ）。按「先 ZIP，再平台清单，最后全局 catalog」的顺序上传：
 +
-+catalog-entry.json 交给全局目录维护者合并、重新签署并最后上传。OctopPet 仓库不处理全局目录，不访问/覆盖 Cua 的组件文件；历史候选全局目录不是本次产物。
++1. 版本目录下的 ZIP → /sah/components/paldee-pet/{version}/；上传后用公开 URL 核对字节数和 SHA-256 与清单一致。
++2. 已签名的平台清单 latest-{platform}.json → /sah/components/paldee-pet/。
++3. （仅新增组件或新增平台时）已重签的全局 catalog.json → /sah/components/catalog.json，覆盖服务器现有目录。合并前先从服务器下载当前 catalog.json 作为起点，保留其他组件条目（当前为 cua-driver-windows 与 octoppet），只给 octoppet 增加（或更新）对应平台的清单地址和支持平台数组，再用发布私钥重新签名整个目录后上传。建议在服务器先备份旧的 catalog.json。
++
++catalog 条目（catalog-entry-{platform}.json）交给全局目录维护者合并、重新签署并最后上传，不直接上传到组件子目录。OctopPet 仓库脚本不访问/覆盖 Cua 或浏览器增强的组件文件；历史候选全局目录不是本次产物。
++
++注意浏览器增强组件（browser-enhancement-chromium）是另一个独立签名组件，与本组件共用同一发布私钥与 key_id，但其发现走「约定 URL」（{base}/browser-enhancement-chromium/latest-{platform}.json），不依赖也不出现在全局 catalog.json 中。合并 octoppet 的平台清单时不要把浏览器增强错误地加入目录。
 +
 +本轮仅做本地整改、构建及临时目录验收。小助手调用层还需按此协议调用 start/status/show/hide/stop，再完成原有组件仍可见、真实签名安装、更新和卸载联调。仅安装 ZIP 不意味着通用安装器自动获得这些控制动作。
 +
@@ -115,6 +142,36 @@ index 0000000000000000000000000000000000000000..18e07a1da20b6ec383ef2f44f4eec30d
 +小助手“功能组件”选中 Paldee Pet 后启用“打开”；打开通过 start --json 再 show --json，能显示已隐藏的现有实例，失败原因显示在组件页。小助手启动只读本地已验签目录，对用户明确开启此设置且已安装的应用调用 start --json，不联网下载，不注册 Windows 自启动，不强制 show，不随小助手退出而关闭独立桌宠。
 +
 +本功能也需要小助手调用层的本轮修改：components/manager.py、components/operations.py、gui/main_window.py；只更新 ZIP 无法让旧主程序执行联动启动。源码运行的小助手需重启；安装版需发布包含这些修改的新主程序。minimum_helper_version=1.2.6 表示配置/组件协议基线，不替代核实主程序包含本轮调用层。
++
++## macOS 平台差异（0.2.3）
++
++macOS x86_64 平台与 Windows 共用同一 octoppet 组件 ID、`octoppet-component@1` 运行协议、`octoppet` 数据目录散列算法与 dev/release 区分。调用者看到的命令、JSON 负载、错误码和退出码一致。仅传输原语与可执行格式不同：
++
++| 维度             | Windows                                                  | macOS                                                                                      |
++| ---------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
++| 控制通道         | 当前用户命名管道（ACL 按 SID 作用域）                    | `$TMPDIR` 内 Unix 域套接字（目录 0700、套接字 0600），作用域为所属 uid，编码进套接字文件名 |
++| 服务器进程核对   | `GetNamedPipeServerProcessId`                            | `LOCAL_PEERPID` 对端凭据检查                                                               |
++| 入口可执行格式   | PE，须 AMD64；按导入表校验只链接系统 DLL                 | Mach-O，须 `CPU_TYPE_X86_64`；按 `otool -L` 校验无非系统动态库                             |
++| 异常退出接管核对 | `TerminateProcess` + `QueryFullProcessImageNameW` 验镜像 | `SIGKILL` + `libproc.proc_pidpath` 验镜像                                                  |
++| 归档可执行位     | PE 不需要                                                | `external_attr` 记录 0o755，安装器须在解包后恢复                                           |
++
++用户数据默认目录在 macOS 上为 `~/Library/Application Support/com.octop.pet`（与 `app_config_dir()` 返回一致，已有安装不会迁移）；`OCTOPPET_DATA_DIR` 仍可用于隔离测试或部署，拒绝整个组件根目录及其父目录的规则不变。
++
++macOS 运行时实现集中在 `src-tauri/src/component_runtime_macos.rs`（镜像 Windows 的 `component_runtime.rs`）；`lib.rs` 与 `config_cmd.rs` 通过 `cfg(any(windows, target_os = "macos"))` 同时为两平台启用组件运行时与 `data_dir()` 解析。`cargo check` / `cargo test`（lib 8 项 + 集成 20 项）在本机通过。
++
++macOS 打包相关的第三方许可证：18 个 macOS 专属 Rust crate（objc2 / block2 / dispatch2 系列）上游只发布 LICENSE.md 指针文档、crate 包不带正文，故从 SPDX license-list-data 固定提交拉取官方 MIT 标准正文，存于 `packaging/third-party-licenses/objc2-shared/LICENSE-MIT.txt`，并在 SOURCES.json 为这 18 个 crate 各登记一条共享记录（trio 许可证「Zlib OR Apache-2.0 OR MIT」均包含 MIT，一份正文满足全部）。
++
++macOS 验收测试 `scripts/test_pd_component_macos.py` 镜像 Windows 的 `test_pd_component.py`，覆盖元数据/架构、中文空格安装路径、并发与重复启动、正常与异常停止、超时、协议不兼容、独立用户数据保留与卸载。需对真实签名包执行；本仓库不自动运行。
++
++## 受控签名流程（0.2.3 起）
++
++组件清单与全局目录的 Ed25519 签名属于小助手项目的产品发布步骤，使用独立小助手仓库的受信任发布私钥（key_id `xiaozs-components-2026-01`）；客户端用小助手内置公钥 `EUlug4+wmNeU6MVKjjC1/9cSygyWsSAeEVAHaw13Pqk=` 验签。本仓库刻意不持有、不读取、不复制、不提交该私钥；打包器只产出 `"signature": "pending"` 的未签名清单与 catalog 条目。
++
++签名工具为小助手仓库的 `packaging/sign_component_manifest.py`（依赖 `cryptography`）。流程：先签名平台清单 `latest-{platform}.json`；新增平台时还需下载服务器当前 `catalog.json`，合并新平台清单地址后用同一工具重签整个全局目录。两个产物都要用小助手 `components/signatures.verify_manifest` 复核通过后再上传。签名可在具备私钥的受控机器（含本机）执行；私钥不得进入任何上传文件或提交。
++
++## 随组件交付的 Windows 诊断
++
++后续组件 ZIP 必须同时包含 diagnose-pet-windows.ps1 和 diagnose-pet-windows.cmd。安装后在组件版本目录双击 CMD 可查看系统、显卡、窗口位置及宠物布局配置；工具只读，不采集密码、聊天、窗口标题或截图，不上传、不改设置。无需另外下载脚本。已有发布包不覆盖；本轮隔离验收包仅验证诊断工具随包交付，后续新版本发布后现有用户才能通过更新获取。
 diff --git a/docs/OCTOPPET_COMPONENT_ACCEPTANCE.md b/docs/OCTOPPET_COMPONENT_ACCEPTANCE.md
 new file mode 100644
 index 0000000000000000000000000000000000000000..e4d1b4328b1bc78ec4ce60805e551e617f9eca76
@@ -281,13 +338,15 @@ index 0000000000000000000000000000000000000000..0f3856facbc064991e775ca7e39f8892
 +旧 0.2.1 ZIP 和已验收记录保留。失败的未发布 0.2.2 候选包和对应签名清单仅归档到缓存/暂存备份，不能上传。当前最终签名和联调报告位于 D:/ai/xiaozs.com/component-release-staging/paldee-pet-0.2.2/。Pet 构建目录中的 latest 仍是 unsigned 构建产物；上传应使用网站对应本地目录中的已签名文件。
 diff --git a/docs/upstream-sync/PALDEE_SYNC.md b/docs/upstream-sync/PALDEE_SYNC.md
 new file mode 100644
-index 0000000000000000000000000000000000000000..0fc2782de2e4fadbbd084b8b3ba55e089f895e59
+index 0000000000000000000000000000000000000000..51ae99d16e2da68702920f3bb4eeaff74a8958e8
 --- /dev/null
 +++ b/docs/upstream-sync/PALDEE_SYNC.md
-@@ -0,0 +1,77 @@
+@@ -0,0 +1,98 @@
 +# Paldee Pet 品牌与上游同步流程
 +
-+记录日期：2026-10-08。本仓库继续独立维护，不向小助手仓库复制源码。
++逐项修改、文件范围和验收边界见 [原项目源码修改清单](SOURCE_CHANGES.md)。后续修改源码时同步更新清单，升级上游时按编号核对。
++
++记录日期：2026-10-08；上游身份与基线于 2026-10-23 核对更新，见 [精确源码基线](SOURCE_BASELINES.md)。本仓库继续独立维护，不向小助手仓库复制源码。
 +
 +## 修改边界
 +
@@ -295,26 +354,45 @@ index 0000000000000000000000000000000000000000..0fc2782de2e4fadbbd084b8b3ba55e08
 +`src/lib/brand.ts` 提供前端名称，设置页和页面标题读取它；托盘读取 Tauri 配置；组件打包器同样读取该字段。
 +聊天原生窗口标题在同一配置中显式设置为 Paldee Pet；修改品牌时同时核对它。宠物窗口空标题保留，避免 Windows 残留标题条。
 +
-+保留 `com.octop.pet` 应用/凭据标识、`octoppet` 组件 ID、`octoppet-component@1` 和 `pd-chat-cli@2` 协议；独立用户数据路径保持不变。不要把远程 Octop 服务名称全部替换成 Paldee。图标本次保留；以后品牌资源放在独立目录，按打包配置接入。原作者版权、LICENSE 和上游来源不得删除。
++保留 `com.octop.pet` 应用/凭据标识、`octoppet` 组件 ID、`octoppet-component@1` 和 `pd-chat-cli@2` 协议；独立用户数据路径保持不变。不要把远程 Octop 服务名称全部替换成 Paldee。应用图标和托盘形象已替换；品牌资源按现有打包配置接入。原作者版权、LICENSE 和上游来源不得删除。
 +
-+| 扩展         | 独立文件                                     | 合并时检查的已有文件                                             |
-+| ------------ | -------------------------------------------- | ---------------------------------------------------------------- |
-+| 品牌         | src/lib/brand.ts、本说明                     | tauri.conf.json、main.tsx、SettingsWindow.tsx、tray.rs、打包脚本 |
-+| 聊天桥接     | pdChatBridge.ts、pd_bridge_cmd.rs            | useChatController.ts、tauriApi.ts、lib.rs                        |
-+| 可选组件     | component_runtime.rs、scripts/_pd_component_ | Cargo.toml/lock、lib.rs、config_cmd.rs、secrets_cmd.rs           |
-+| 太极眼睛动画 | mascot.css、MascotImage.test.tsx             | MascotImage.tsx                                                  |
++| 扩展         | 独立文件                                        | 合并时检查的已有文件                                                                       |
++| ------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------ |
++| 品牌         | src/lib/brand.ts、本说明                        | tauri.conf.json、main.tsx、SettingsWindow.tsx、tray.rs、打包脚本                           |
++| 聊天桥接     | pdChatBridge.ts、pd_bridge_cmd.rs               | useChatController.ts、tauriApi.ts、lib.rs                                                  |
++| 可选组件     | component_runtime.rs、scripts/_pd_component_    | Cargo.toml/lock、lib.rs、config_cmd.rs、secrets_cmd.rs                                     |
++| 内置形象替换 | public/mascots/、scripts/build_mascot_assets.py | MascotImage.tsx、types.ts、configLogic.ts、SettingsWindow.tsx、config_cmd.rs（旧 ID 迁移） |
++
++应用图标采用清理后的 `public/mascots/type.png`。`scripts/build_app_icons.ps1` 先裁掉多余透明边距，再以约 3% 的安全边距生成 `assets/octop-app-icon.png` 及 `src-tauri/icons/` 的桌面、iOS、Android 配套图标。Windows 任务栏使用 `icon.ico`；托盘使用同一人物的黑色剪影 `tray-template.png`（32×32）及 `tray-template@2x.png`（64×64）。当前 Rust 托盘接线直接引用普通版，因此必须同步生成两份。
++
++在仓库根目录执行（需要 FFmpeg）：
++
++```powershell
++python scripts/build_mascot_assets.py
++./scripts/build_app_icons.ps1
++```
++
++原生图标变更需重新编译并重启程序。`src-tauri/build.rs` 监视 `icons` 目录，保证增量构建会重新嵌入新图标。
++
++## macOS 同步（2026-10-23）
++
++Windows 和 macOS 共用同一套前端、形象配置与 Rust 配置迁移逻辑，默认 Peek，设置只显示 Peek/Type。聊天空白页使用用户提供的矢量 `src/assets/logo.svg`，不透明度统一为 10%。固定主体动画、Type 下巴修复和手部残线修复均随同一份 `public/mascots/` 打包。
++
++macOS 应用图标为本轮同步生成的 `src-tauri/icons/icon.icns`；菜单栏使用已更新的单色托盘模板，并保留 `icon_as_template(true)`。现有发布矩阵覆盖 Apple Silicon 和 Intel，无须维护另一份 Mac 形象或前端源码。生成后的图标已入源码工作区，Mac 构建可直接使用，无需运行 Windows 图标脚本。
++
++Windows 本地检查不能替代 Mac 验收。本轮尚未构建、安装或发布 Mac 包。后续在真实 Mac 上检查：Peek/Type 动画、聊天空白标志、Dock/Finder 应用图标、菜单栏浅色/深色效果，以及宠物窗口焦点切换后的透明背景。
 +
 +## 第一次同步前
 +
-+当前 origin 是自有仓库 https://github.com/xiaozs-com/OctopPet.git。尚未配置 upstream，且为浅克隆。先从原项目页面确认 **OctopPet 原仓库 URL 和默认分支**；不要把 Octop 服务端仓库或 origin 当作 Pet 上游。本次没有新增远端、联网拉取、合并或提交。
++当前 origin 是自有 fork https://github.com/xiaozs-com/paldee-pet.git。已通过 GitHub parent/source 和固定提交比较核实原上游为 https://github.com/jubaoliang/OctopPet.git，默认分支 master，当前 fork 的上游共同祖先为 `4ed0711cbd19d29341656317cb4e526bd59789d1`，该提交包版本 0.2.0。尚未在本地配置 upstream，且本地仍为浅克隆。此前已核对来源；2026-10-23 本地按固定 SHA 取回原上游对象，并快进合入自有远端的四项 Mac 支持提交；未增加 upstream remote。不要把 Octop 服务端仓库、origin、本地浅克隆起点或组件补丁导出基线当作 Pet 上游。
 +
-+以下命令在仓库目录的 PowerShell 执行；尖括号是待填内容，不能直接照抄执行。
++以下命令在仓库目录的 PowerShell 执行；上游分支名未来仍需核实，后续示例中的尖括号必须按当次情况填写。
 +
 +```powershell
 +git status --short
 +git remote -v
 +git rev-parse --is-shallow-repository
-+git remote add upstream <确认的-OctopPet-仓库URL>
++git remote add upstream https://github.com/jubaoliang/OctopPet.git
 +git fetch upstream
 +```
 +
@@ -344,7 +422,7 @@ index 0000000000000000000000000000000000000000..0fc2782de2e4fadbbd084b8b3ba55e08
 +git diff --check
 +```
 +
-+5. 验证设置页名称、托盘提示、聊天、太极仅眼睛动画；按 `docs/OCTOPPET_COMPONENT.md` 构建并运行组件验收。用户数据、重复启动、停止、异常退出、中文空格路径都必须通过。Mac 手工测试需另行执行，Windows 通过不代表 Mac 通过。
++5. 验证设置页名称、托盘提示、聊天、Peek 仅眨眼、Type 仅手部动画及白色电脑 Logo；按 `docs/OCTOPPET_COMPONENT.md` 构建并运行组件验收。用户数据、重复启动、停止、异常退出、中文空格路径都必须通过。Mac 手工测试需另行执行，Windows 通过不代表 Mac 通过。
 +6. 更新 CHANGELOG、同步日期/上游提交/冲突位置/测试结果，审查后由维护者提交。合并回维护分支、push 和发布是单独步骤；源码同步不等于发布安装包。
 +
 +合并期间要放弃时用 `git merge --abort`，返回原维护分支；恢复分支留存。已结束合并后不要对有工作改动的目录执行 reset；先保存工作，再从恢复分支创建新的工作分支。
@@ -363,7 +441,7 @@ index 0000000000000000000000000000000000000000..0fc2782de2e4fadbbd084b8b3ba55e08
 +
 +2026-10-10 项目包名改为 paldee-pet，Rust 库名 paldee_pet_lib，原生构建入口 paldee-pet.exe；同步上游后检查 package/lock、Cargo/lock、main.rs、command_logic.rs 与 build_pd_component.ps1 的名字接线。上游 OctopPet 版权来源、内部 octoppet 组件 ID、com.octop.pet 用户数据及协议标识保留。历史补丁与已发布 ZIP 不重写。
 diff --git a/package-lock.json b/package-lock.json
-index 0e1ef1b9b6a594fbbfa55c0dc4d5fdb13ef5467f..03c8cc33c788a786d88c9f0cbc5c1797ac1a09e5 100644
+index 0e1ef1b9b6a594fbbfa55c0dc4d5fdb13ef5467f..c443ceb224c7aedb38bf47f34c2b7e7a6ad5c7ad 100644
 --- a/package-lock.json
 +++ b/package-lock.json
 @@ -1,12 +1,12 @@
@@ -371,7 +449,7 @@ index 0e1ef1b9b6a594fbbfa55c0dc4d5fdb13ef5467f..03c8cc33c788a786d88c9f0cbc5c1797
 -  "name": "octop-pet",
 -  "version": "0.2.0",
 +  "name": "paldee-pet",
-+  "version": "0.2.3",
++  "version": "0.2.5",
    "lockfileVersion": 3,
    "requires": true,
    "packages": {
@@ -379,12 +457,12 @@ index 0e1ef1b9b6a594fbbfa55c0dc4d5fdb13ef5467f..03c8cc33c788a786d88c9f0cbc5c1797
 -      "name": "octop-pet",
 -      "version": "0.2.0",
 +      "name": "paldee-pet",
-+      "version": "0.2.3",
++      "version": "0.2.5",
        "dependencies": {
          "@tauri-apps/api": "^2",
          "@tauri-apps/plugin-http": "^2.5.9",
 diff --git a/package.json b/package.json
-index 10f7eacb28e246ef3c71221d3b79e451572ca7da..23fbb0b18ac1342895b7de9744f942ef2da1a78e 100644
+index 10f7eacb28e246ef3c71221d3b79e451572ca7da..636c5d6e75599b5b6f74c7c7bdf4937807a00e05 100644
 --- a/package.json
 +++ b/package.json
 @@ -1,7 +1,7 @@
@@ -393,16 +471,16 @@ index 10f7eacb28e246ef3c71221d3b79e451572ca7da..23fbb0b18ac1342895b7de9744f942ef
 +  "name": "paldee-pet",
    "private": true,
 -  "version": "0.2.0",
-+  "version": "0.2.3",
++  "version": "0.2.5",
    "type": "module",
    "scripts": {
      "dev": "vite",
 diff --git a/packaging/third-party-licenses/SOURCES.json b/packaging/third-party-licenses/SOURCES.json
 new file mode 100644
-index 0000000000000000000000000000000000000000..3f710d89372a255e81cbd9cd2efbe636f36bddbe
+index 0000000000000000000000000000000000000000..3a33fa36fcc735184b963506078458a1618b912f
 --- /dev/null
 +++ b/packaging/third-party-licenses/SOURCES.json
-@@ -0,0 +1,54 @@
+@@ -0,0 +1,180 @@
 +{
 +  "alloc-stdlib-0.2.4": [
 +    {
@@ -455,6 +533,132 @@ index 0000000000000000000000000000000000000000..3f710d89372a255e81cbd9cd2efbe636
 +      "url": "https://raw.githubusercontent.com/wravery/webview2-rs/dffa41a8a46d3f5565eefbff2de57d38d399f158/LICENSE",
 +      "sha256": "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73"
 +    }
++  ],
++  "block2-0.6.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "dispatch2-0.3.1": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-0.6.4": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-app-kit-0.3.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-cloud-kit-0.3.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-core-data-0.3.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-core-foundation-0.3.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-core-graphics-0.3.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-core-image-0.3.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-core-text-0.3.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-core-video-0.3.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-encode-4.1.0": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-exception-helper-0.1.1": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-foundation-0.3.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-io-surface-0.3.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-metal-0.3.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-quartz-core-0.3.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
++  ],
++  "objc2-web-kit-0.3.2": [
++    {
++      "file": "objc2-shared/LICENSE-MIT.txt",
++      "url": "https://raw.githubusercontent.com/spdx/license-list-data/31ba1a50e5397e00a304dbadc76531740e89ee48/text/MIT.txt",
++      "sha256": "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
++    }
 +  ]
 +}
 diff --git a/packaging/third-party-licenses/alloc-stdlib-0.2.4/LICENSE-LICENSE.txt b/packaging/third-party-licenses/alloc-stdlib-0.2.4/LICENSE-LICENSE.txt
@@ -475,6 +679,30 @@ index 0000000000000000000000000000000000000000..cd496ba72eb37e83a44958358d1f89a8
 +3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
 +
 +THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+diff --git a/packaging/third-party-licenses/objc2-shared/LICENSE-MIT.txt b/packaging/third-party-licenses/objc2-shared/LICENSE-MIT.txt
+new file mode 100644
+index 0000000000000000000000000000000000000000..d817195dad53ec992418c28ffca5fbd1cd86502a
+--- /dev/null
++++ b/packaging/third-party-licenses/objc2-shared/LICENSE-MIT.txt
+@@ -0,0 +1,18 @@
++MIT License
++
++Copyright (c) <year> <copyright holders>
++
++Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
++associated documentation files (the "Software"), to deal in the Software without restriction, including
++without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
++following conditions:
++
++The above copyright notice and this permission notice shall be included in all copies or substantial
++portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
++LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
++EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
++IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
++USE OR OTHER DEALINGS IN THE SOFTWARE.
 diff --git a/packaging/third-party-licenses/selectors-0.36.1/LICENSE-index.txt.txt b/packaging/third-party-licenses/selectors-0.36.1/LICENSE-index.txt.txt
 new file mode 100644
 index 0000000000000000000000000000000000000000..d0a1fa1482eea82e19510e7920cbe3a03e41f691
@@ -1388,12 +1616,78 @@ index 0000000000000000000000000000000000000000..38ff9bde81654081f739e1f90b8b5d15
 +)
 +if ($OutputDirectory) { $packageArguments += @('--output', $OutputDirectory) }
 +Invoke-Checked python $packageArguments
+diff --git a/scripts/build_pd_component_macos.sh b/scripts/build_pd_component_macos.sh
+new file mode 100755
+index 0000000000000000000000000000000000000000..bb355dea7a37398630d9fee98a4e71a903f884a7
+--- /dev/null
++++ b/scripts/build_pd_component_macos.sh
+@@ -0,0 +1,60 @@
++#!/bin/bash
++# Local macOS component build (x86_64 or arm64). No installation, keys, catalog
++# merge or upload.
++#
++# Mirrors scripts/build_pd_component.ps1 (Windows). The Tauri program keeps its
++# Cargo name; the packager copies it into the archive as `paldee-pet`, and the
++# helper knows it only by that entry name.
++#
++# Usage:
++#   build_pd_component_macos.sh <bridge-root> [output-directory] [arch]
++#   arch defaults to the runner's native arch (x86_64 or arm64).
++set -euo pipefail
++
++root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
++bridge_root="${1:?usage: build_pd_component_macos.sh <bridge-root> [output-directory] [arch]}"
++output="${2:-}"
++arch="${3:-}"
++
++[[ "$(uname -s)" == "Darwin" ]] || { echo "macOS is required" >&2; exit 2; }
++[[ -f "$bridge_root/native/Cargo.toml" ]] || { echo "bridge root not found: $bridge_root" >&2; exit 2; }
++
++# Resolve the requested arch: explicit arg, else the runner's native arch.
++native="$(uname -m)"
++if [[ -z "$arch" ]]; then
++  case "$native" in
++    x86_64) arch="x86_64" ;;
++    arm64)  arch="arm64"  ;;
++    *) echo "unsupported native arch: $native" >&2; exit 2 ;;
++  esac
++fi
++case "$arch" in
++  x86_64) target="x86_64-apple-darwin" ;;
++  arm64)  target="arm64-apple-darwin"  ;;
++  *) echo "unsupported arch: $arch (use x86_64 or arm64)" >&2; exit 2 ;;
++esac
++
++# Cross-compiling needs the rust target installed; fail early with a clear hint.
++if ! rustc --print target-list | grep -qx "$target"; then
++  echo "rust target $target not available; install with: rustup target add $target" >&2
++  exit 2
++fi
++
++cd "$root"
++
++# Build the pet binary for the requested target. `tauri build` ships the frontend
++# plus the Rust binary; --no-bundle skips the macOS installer packaging.
++npm run tauri build -- --target "$target" --no-bundle
++cargo build --release --locked --target "$target" --manifest-path "$bridge_root/native/Cargo.toml"
++
++arguments=(
++  scripts/package_pd_component_macos.py
++  --platform "macos-$arch"
++  --pet "src-tauri/target/$target/release/paldee-pet"
++  --bridge "$bridge_root/native/target/$target/release/pd-device-bridge"
++  --bridge-root "$bridge_root"
++)
++if [[ -n "$output" ]]; then
++  arguments+=(--output "$output")
++fi
++python3 "${arguments[@]}"
 diff --git a/scripts/export_pd_component_patch.py b/scripts/export_pd_component_patch.py
 new file mode 100644
-index 0000000000000000000000000000000000000000..115165c5ce9549910b9cf61ade8e27c7d19fb4f2
+index 0000000000000000000000000000000000000000..87e8a79ffe0ee1334db089e2ecd3f7decb9eb262
 --- /dev/null
 +++ b/scripts/export_pd_component_patch.py
-@@ -0,0 +1,51 @@
+@@ -0,0 +1,55 @@
 +"""Export only the component implementation layer, leaving eye/other user edits out."""
 +import argparse
 +import difflib
@@ -1411,7 +1705,11 @@ index 0000000000000000000000000000000000000000..115165c5ce9549910b9cf61ade8e27c7
 +ADDED = ["src/lib/brand.ts", "docs/upstream-sync/PALDEE_SYNC.md",
 +         "docs/PALDEE_PET_COMPONENT_ACCEPTANCE.md", "docs/PALDEE_PET_STARTUP_ACCEPTANCE.md", "docs/PALDEE_PET_FULL_CLI.md", "src-tauri/src/component_runtime.rs", "scripts/build_pd_component.ps1",
 +         "scripts/package_pd_component.py", "scripts/test_pd_component.py",
-+         "scripts/export_pd_component_patch.py", "docs/OCTOPPET_COMPONENT.md", "docs/OCTOPPET_COMPONENT_ACCEPTANCE.md"]
++         "src-tauri/src/component_runtime_macos.rs", "scripts/build_pd_component_macos.sh",
++         "scripts/package_pd_component_macos.py", "scripts/test_pd_component_macos.py",
++         "scripts/export_pd_component_patch.py", "scripts/diagnose-pet-windows.ps1", "scripts/diagnose-pet-windows.cmd",
++         "docs/OCTOPPET_COMPONENT.md", "docs/OCTOPPET_COMPONENT_ACCEPTANCE.md", "docs/PALDEE_PET_0.2.4_RELEASE.md",
++         "docs/PALDEE_PET_0.2.5_RELEASE.md"]
 +
 +def git(*args, data=None):
 +    return subprocess.check_output(["git", "-c", "core.safecrlf=false", *args],
@@ -1447,10 +1745,10 @@ index 0000000000000000000000000000000000000000..115165c5ce9549910b9cf61ade8e27c7
 +    main()
 diff --git a/scripts/package_pd_component.py b/scripts/package_pd_component.py
 new file mode 100644
-index 0000000000000000000000000000000000000000..1d0c883fa8fdd639f13ac00b49a6fc172b6395e4
+index 0000000000000000000000000000000000000000..02ed382130ffae427a83aec6309f83783709c847
 --- /dev/null
 +++ b/scripts/package_pd_component.py
-@@ -0,0 +1,226 @@
+@@ -0,0 +1,229 @@
 +"""Package Paldee Pet with UNSIGNED manifests. No private keys, global catalogs or uploads."""
 +from __future__ import annotations
 +import argparse
@@ -1590,8 +1888,9 @@ index 0000000000000000000000000000000000000000..1d0c883fa8fdd639f13ac00b49a6fc17
 +            raise ValueError("Component metadata mismatch")
 +        if "signature" in catalog or "components" in catalog:
 +            raise ValueError("Only an unsigned single-component catalog entry is allowed")
-+        if not {"LICENSE", ENTRY, "pd-device-bridge.exe"}.issubset(bundle.namelist()):
-+            raise ValueError("Entry, bridge or license missing")
++        if not {"LICENSE", ENTRY, "pd-device-bridge.exe", "diagnose-pet-windows.ps1",
++                "diagnose-pet-windows.cmd"}.issubset(bundle.namelist()):
++            raise ValueError("Entry, bridge, license or diagnostics missing")
 +        with tempfile.TemporaryDirectory(prefix="octoppet-zip-check-") as temporary:
 +            bundle.extractall(temporary)
 +            for name in [ENTRY, "pd-device-bridge.exe"]:
@@ -1637,6 +1936,8 @@ index 0000000000000000000000000000000000000000..1d0c883fa8fdd639f13ac00b49a6fc17
 +        shutil.copy2(args.pet, staging / ENTRY)
 +        shutil.copy2(args.bridge, staging / "pd-device-bridge.exe")
 +        shutil.copy2(ROOT / "LICENSE", staging / "LICENSE")
++        for name in ["diagnose-pet-windows.ps1", "diagnose-pet-windows.cmd"]:
++            shutil.copy2(ROOT / "scripts" / name, staging / name)
 +        write_json(staging / "component.json", metadata)
 +        legal = staging / "licenses"
 +        legal.mkdir()
@@ -1677,12 +1978,328 @@ index 0000000000000000000000000000000000000000..1d0c883fa8fdd639f13ac00b49a6fc17
 +
 +if __name__ == "__main__":
 +    main()
+diff --git a/scripts/package_pd_component_macos.py b/scripts/package_pd_component_macos.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..117d27caa5c3881c902b8048419edecf2a81d49c
+--- /dev/null
++++ b/scripts/package_pd_component_macos.py
+@@ -0,0 +1,310 @@
++"""Package Paldee Pet for macOS with UNSIGNED manifests.
++
++Mirrors `scripts/package_pd_component.py` (Windows) so both platforms publish the
++same artifact set and the helper installs them through one path. The differences
++are the platform id passed via --platform (macos-x86_64 or macos-arm64, matching
++`components/platforms.py`), the Mach-O checks in place of PE checks, and
++executable bits inside the archive.
++
++No private keys, global catalogs or uploads happen here. Signing the manifest is
++a controlled release step.
++"""
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import os
++import re
++import shutil
++import struct
++import subprocess
++import tempfile
++import zipfile
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++ID = "octoppet"
++ENTRY = "paldee-pet"
++BRIDGE = "pd-device-bridge"
++PROTOCOL = "octoppet-component@1"
++# macOS component platform ids (matching helper components/platforms.py) and the
++# Mach-O CPU_TYPE_* constant each ships. A thin 64-bit Mach-O stores cpuType in
++# its header (MH_MAGIC_64 little/big-endian); see macho_cpu_type().
++MACOS_PLATFORMS = {
++    "macos-x86_64": 0x01000007,  # CPU_TYPE_X86_64
++    "macos-arm64": 0x0100000C,   # CPU_TYPE_ARM64
++}
++EXECUTABLE_MODE = 0o755
++# The helper's archive extraction drops the executable bit on nested binaries,
++# so archive permissions are a hint; the caller must restore them after install.
++UNIX_CREATE_SYSTEM = 3
++
++
++def write_json(path, value):
++    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
++
++
++def macho_cpu_type(path):
++    with path.open("rb") as file:
++        header = file.read(8)
++    if len(header) != 8:
++        raise ValueError(f"Not a 64-bit Mach-O executable: {path}")
++    magic = header[:4]
++    if magic == b"\xcf\xfa\xed\xfe":
++        order = "<"
++    elif magic == b"\xfe\xed\xfa\xcf":
++        order = ">"
++    else:
++        raise ValueError(f"Not a thin 64-bit Mach-O executable: {path}")
++    return struct.unpack_from(f"{order}I", header, 4)[0]
++
++
++def macho_dependencies(path):
++    """Non-system dynamic libraries, which a self-contained package may not have."""
++    result = subprocess.run(["/usr/bin/otool", "-L", str(path)], capture_output=True, text=True)
++    if result.returncode != 0:
++        return []
++    foreign = []
++    for line in result.stdout.splitlines()[1:]:
++        target = line.strip().split(" (")[0]
++        if not target:
++            continue
++        if target.startswith(("/usr/lib/", "/System/Library/", "@rpath/", "@loader_path/", "@executable_path/")):
++            continue
++        foreign.append(target)
++    return foreign
++
++
++def collect_licenses(destination, bridge_root):
++    records, missing, seen = [], [], set()
++    legal_root = ROOT / "packaging/third-party-licenses"
++    sources = json.loads((legal_root / "SOURCES.json").read_text(encoding="utf-8"))
++
++    def collect(name, version, root, license_id, extra=""):
++        files = sorted(
++            p
++            for p in root.iterdir()
++            if p.is_file()
++            and p.name.upper().startswith(
++                ("LICENSE", "LICENCE", "COPYING", "NOTICE", "COPYRIGHT", "UNLICENSE")
++            )
++        )
++        if extra and (root / extra).is_file() and (root / extra) not in files:
++            files.append(root / extra)
++        if not files:
++            key = name.removeprefix("rust-") + "-" + version
++            if name.startswith("rust-unic-") and version == "0.9.0":
++                key = "unic-0.9.0"
++            for record in sources.get(key, []):
++                path = legal_root / record["file"]
++                if hashlib.sha256(path.read_bytes()).hexdigest() != record["sha256"]:
++                    raise ValueError(f"Pinned license fingerprint mismatch: {path}")
++                files.append(path)
++        if not files:
++            missing.append(f"{name}@{version}: {license_id}")
++            return
++        target = destination / re.sub(r"[^a-zA-Z0-9._-]", "_", f"{name}-{version}")
++        target.mkdir(parents=True, exist_ok=True)
++        for file in files:
++            shutil.copy2(file, target / file.name)
++        source = (
++            f"https://crates.io/api/v1/crates/{name.removeprefix('rust-')}/{version}/download"
++            if name.startswith("rust-")
++            else f"https://www.npmjs.com/package/{name.removeprefix('npm-')}/v/{version}"
++        )
++        records.append({"name": name, "version": version, "license": license_id, "source": source})
++
++    lock = json.loads((ROOT / "package-lock.json").read_text(encoding="utf-8"))
++    for name, info in lock["packages"].items():
++        if not name or info.get("dev"):
++            continue
++        root = ROOT / name
++        package = json.loads((root / "package.json").read_text(encoding="utf-8"))
++        collect("npm-" + package["name"], package["version"], root, str(package.get("license", "")))
++    for manifest in [ROOT / "src-tauri/Cargo.toml", bridge_root / "native/Cargo.toml"]:
++        metadata = json.loads(
++            subprocess.check_output(
++                [
++                    "cargo", "metadata", "--offline", "--locked", "--format-version", "1",
++                    "--filter-platform", "x86_64-apple-darwin", "--manifest-path", str(manifest),
++                ],
++                text=True,
++            )
++        )
++        resolved = {node["id"] for node in metadata["resolve"]["nodes"]}
++        for package in metadata["packages"]:
++            if package["id"] not in resolved or package["source"] is None or package["id"] in seen:
++                continue
++            seen.add(package["id"])
++            collect(
++                "rust-" + package["name"], package["version"],
++                Path(package["manifest_path"]).parent,
++                package.get("license") or "", package.get("license_file") or "",
++            )
++    if missing:
++        raise ValueError("Missing dependency license texts:\n" + "\n".join(missing))
++    write_json(destination / "THIRD_PARTY_NOTICES.json", {"dependencies": records})
++    shutil.copy2(legal_root / "SOURCES.json", destination / "PINNED_LICENSE_SOURCES.json")
++
++
++def validate_archive(archive, manifest, catalog, platform, cpu_type):
++    if archive.stat().st_size != manifest["size"]:
++        raise ValueError("ZIP byte size mismatch")
++    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
++    if digest != manifest["sha256"]:
++        raise ValueError("ZIP SHA-256 mismatch")
++    with zipfile.ZipFile(archive) as bundle:
++        if bundle.testzip() is not None:
++            raise ValueError("ZIP integrity failed")
++        for name in bundle.namelist():
++            if name.startswith(("/", "\\")) or ".." in name.replace("\\", "/").split("/") or ":" in name:
++                raise ValueError("Unsafe ZIP path")
++        metadata = json.loads(bundle.read("component.json"))
++        if not (
++            metadata["id"] == manifest["id"] == catalog["id"] == ID
++            and metadata["version"] == manifest["version"]
++            and metadata["entry"] == manifest["entry"] == ENTRY
++            and metadata["supported_runtime_platforms"] == [manifest["platform"]] == [platform]
++            and list(catalog["manifests"]) == [platform]
++            and metadata["protocol"] == PROTOCOL
++        ):
++            raise ValueError("Component metadata mismatch")
++        if "signature" in catalog or "components" in catalog:
++            raise ValueError("Only an unsigned single-component catalog entry is allowed")
++        if not {"LICENSE", ENTRY, BRIDGE}.issubset(bundle.namelist()):
++            raise ValueError("Entry, bridge or license missing")
++        for name in (ENTRY, BRIDGE):
++            if not bundle.getinfo(name).external_attr >> 16 & 0o111:
++                raise ValueError(f"Archive lost the executable bit: {name}")
++        with tempfile.TemporaryDirectory(prefix="paldee-pet-zip-check-") as temporary:
++            bundle.extractall(temporary)
++            for name in (ENTRY, BRIDGE):
++                if macho_cpu_type(Path(temporary) / name) != cpu_type:
++                    raise ValueError(f"Incorrect executable architecture for {platform}")
++    return {
++        "id": ID, "version": manifest["version"], "platform": platform, "entry": ENTRY,
++        "size": manifest["size"], "sha256": digest, "signature": "pending",
++    }
++
++
++def package(args):
++    version = args.version
++    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
++        raise ValueError("Version must be x.y.z")
++    base = args.base_url.rstrip("/")
++    if not base.startswith("https://") or not base.endswith("/paldee-pet"):
++        raise ValueError("Base URL must be an HTTPS paldee-pet directory")
++    platform = args.platform
++    if platform not in MACOS_PLATFORMS:
++        raise ValueError(f"Unsupported platform {platform!r}; choose from {sorted(MACOS_PLATFORMS)}")
++    cpu_type = MACOS_PLATFORMS[platform]
++    for path in [args.pet, args.bridge]:
++        if macho_cpu_type(path) != cpu_type:
++            raise ValueError(f"Only {platform} executables are supported: {path}")
++        foreign = macho_dependencies(path)
++        if foreign:
++            raise ValueError(f"Unbundled dynamic library dependency: {path.name}: {foreign}")
++    if not (args.bridge_root / "LICENSE").is_file():
++        raise ValueError("Bridge license is required")
++    with tempfile.TemporaryDirectory(prefix="paldee-pet-version-check-") as temporary:
++        env = dict(os.environ, OCTOPPET_DATA_DIR=temporary)
++        result = subprocess.run(
++            [str(args.pet.resolve()), "status", "--json"],
++            capture_output=True, text=True, encoding="utf-8", env=env, timeout=20, check=True,
++        )
++        status = json.loads(result.stdout)
++        if status.get("protocol") != PROTOCOL or status.get("version") != version:
++            raise ValueError("Executable version/protocol does not match")
++    output = args.output.resolve()
++    archive = output / version / f"paldee-pet-{version}-{platform}.zip"
++    if archive.exists():
++        raise FileExistsError("Immutable version already exists; use a new version or separate output")
++    archive.parent.mkdir(parents=True, exist_ok=True)
++    metadata = {
++        "id": ID,
++        "name": json.loads((ROOT / "src-tauri/tauri.conf.json").read_text(encoding="utf-8"))["productName"],
++        "version": version,
++        "protocol": PROTOCOL,
++        "capabilities": ["desktop.pet@1", "desktop.helper-cli@2"],
++        "supported_runtime_platforms": [platform],
++        "entry": ENTRY,
++        "launchable": True,
++        "settings": [
++            {
++                "key": "start_with_helper",
++                "name": "随“屏幕自动化小助手”启动",
++                "description": "默认关闭。保存后，下次启动屏幕自动化小助手时启动桌宠；不设置系统自启动。",
++                "value_type": "boolean",
++                "default": False,
++                "restart_required": False,
++            }
++        ],
++        "retains_user_data_on_uninstall": True,
++    }
++    with tempfile.TemporaryDirectory(prefix="paldee-pet-package-") as temporary:
++        staging = Path(temporary)
++        shutil.copy2(args.pet, staging / ENTRY)
++        shutil.copy2(args.bridge, staging / BRIDGE)
++        shutil.copy2(ROOT / "LICENSE", staging / "LICENSE")
++        write_json(staging / "component.json", metadata)
++        legal = staging / "licenses"
++        legal.mkdir()
++        shutil.copy2(args.bridge_root / "LICENSE", legal / "PD_BRIDGE_LICENSE.txt")
++        collect_licenses(legal, args.bridge_root)
++        with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as bundle:
++            for path in sorted(staging.rglob("*")):
++                if not path.is_file():
++                    continue
++                info = zipfile.ZipInfo(path.relative_to(staging).as_posix(), (2026, 1, 1, 0, 0, 0))
++                info.create_system = UNIX_CREATE_SYSTEM
++                if path.relative_to(staging).as_posix() in (ENTRY, BRIDGE):
++                    info.external_attr = EXECUTABLE_MODE << 16
++                bundle.writestr(info, path.read_bytes(), compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
++    manifest = {
++        "id": ID, "version": version, "platform": platform,
++        "download_url": f"{base}/{version}/{archive.name}",
++        "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
++        "size": archive.stat().st_size,
++        "entry": ENTRY, "license": "MIT", "source": "https://github.com/xiaozs-com/paldee-pet",
++        "minimum_helper_version": "1.2.6",
++    }
++    catalog = {
++        "id": ID, "name": metadata["name"], "category": "交互增强",
++        "description": "独立桌面宠物，与远程 Octop 聊天并按需调用本机屏幕自动化小助手CLI。",
++        "supported_platforms": ["darwin"], "manifests": {platform: f"{base}/latest-{platform}.json"},
++        "required_capabilities": [], "acquisition": "free", "retains_user_data_on_uninstall": True,
++    }
++    write_json(output / f"latest-{platform}.unsigned.json", manifest)
++    write_json(output / f"latest-{platform}.json", manifest)
++    write_json(output / "catalog-entry.json" if args.single_catalog else output / f"catalog-entry-{platform}.json", catalog)
++    write_json(output / "package-validation.json", validate_archive(archive, manifest, catalog, platform, cpu_type))
++    (output / "UNSIGNED_MANIFEST.txt").write_text(
++        f"latest-{platform}.json is UNSIGNED. Sign it in the controlled release environment before uploading.\n"
++        "No private keys or global catalog.json are read, generated, merged or uploaded by this repository.\n",
++        encoding="utf-8",
++    )
++    return archive
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--version", default=json.loads((ROOT / "package.json").read_text())["version"])
++    parser.add_argument("--pet", type=Path, required=True)
++    parser.add_argument("--bridge", type=Path, required=True)
++    parser.add_argument("--bridge-root", type=Path, required=True)
++    parser.add_argument(
++        "--platform", default="macos-x86_64", choices=sorted(MACOS_PLATFORMS),
++        help="macOS component platform id (matches helper components/platforms.py).",
++    )
++    parser.add_argument("--output", type=Path, default=ROOT / "build/component-release/paldee-pet")
++    parser.add_argument("--base-url", default="https://www.xiaozs.com/sah/components/paldee-pet")
++    parser.add_argument(
++        "--single-catalog", action="store_true",
++        help="Write catalog-entry.json (Windows already owns that name) instead of a platform-suffixed entry.",
++    )
++    print(package(parser.parse_args()))
++
++
++if __name__ == "__main__":
++    main()
 diff --git a/scripts/test_pd_component.py b/scripts/test_pd_component.py
 new file mode 100644
-index 0000000000000000000000000000000000000000..99b3c3cb69e6f042ebc3784f9c986bc1d2b5c326
+index 0000000000000000000000000000000000000000..05b4f9cfe03b2dcbaa30575509690fcfe1c3a7be
 --- /dev/null
 +++ b/scripts/test_pd_component.py
-@@ -0,0 +1,269 @@
+@@ -0,0 +1,284 @@
 +"""Windows acceptance against the real packaged executable, with isolated user data."""
 +from __future__ import annotations
 +import argparse
@@ -1772,8 +2389,22 @@ index 0000000000000000000000000000000000000000..99b3c3cb69e6f042ebc3784f9c986bc1
 +            self.assertIs(metadata["settings"][0]["default"], False)
 +        with zipfile.ZipFile(self.archive) as bundle:
 +            for name in bundle.namelist():
-+                self.assertTrue(name in ["component.json", "LICENSE", "paldee-pet.exe", "pd-device-bridge.exe"] or
++                self.assertTrue(name in ["component.json", "LICENSE", "paldee-pet.exe", "pd-device-bridge.exe",
++                                         "diagnose-pet-windows.ps1", "diagnose-pet-windows.cmd"] or
 +                                name.startswith("licenses/"), name)
++
++    def test_bundled_diagnostics_are_read_only(self):
++        config = self.user_data / "config.json"
++        before = config.read_bytes()
++        result = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
++                                 "-File", str(self.installation / "diagnose-pet-windows.ps1")],
++                                env=self.env, capture_output=True, timeout=30)
++        self.assertEqual(result.returncode, 0, result.stderr)
++        # Windows PowerShell's output encoding follows the local console code page.
++        report = json.loads(result.stdout.decode("utf-8", errors="replace"))
++        self.assertEqual(report["petConfig"]["mascotId"], "taiji-bot")
++        self.assertIn("windows", report)
++        self.assertEqual(config.read_bytes(), before)
 +
 +    def test_chinese_space_path_and_repeat_launch(self):
 +        first = self.invoke("start")
@@ -1785,7 +2416,8 @@ index 0000000000000000000000000000000000000000..99b3c3cb69e6f042ebc3784f9c986bc1
 +        self.assertEqual(repeated.returncode, 0, repeated.stderr)
 +        self.assertEqual(self.invoke("status")["pid"], first["pid"])
 +        self.assertEqual({p.name for p in self.installation.iterdir()},
-+                         {"component.json", "LICENSE", "paldee-pet.exe", "pd-device-bridge.exe", "licenses"})
++                         {"component.json", "LICENSE", "paldee-pet.exe", "pd-device-bridge.exe", "licenses",
++                          "diagnose-pet-windows.ps1", "diagnose-pet-windows.cmd"})
 +
 +    def test_concurrent_start_has_one_owner(self):
 +        # Repeat cold starts to cover both contenders winning the ownership race.
@@ -1952,8 +2584,381 @@ index 0000000000000000000000000000000000000000..99b3c3cb69e6f042ebc3784f9c986bc1
 +
 +if __name__ == "__main__":
 +    main()
+diff --git a/scripts/test_pd_component_macos.py b/scripts/test_pd_component_macos.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..7bfb1bb676d0676c8286c951e844b06afee7a7c1
+--- /dev/null
++++ b/scripts/test_pd_component_macos.py
+@@ -0,0 +1,367 @@
++"""macOS x86_64 acceptance against the real packaged executable, with isolated user data.
++
++Mirrors `scripts/test_pd_component.py` (Windows) so both platforms exercise the same
++component contract: archive metadata, executable architecture, Chinese/space install
++paths, concurrent and repeat launches, normal and abnormal stop, bounded timeouts,
++protocol-version rejection, user-data independence and uninstall retention.
++
++Only the transport and process primitives differ:
++
++  named pipe (`control_pipe`)        -> Unix domain socket (`control_pipe`)
++  PE machine word / import scan      -> Mach-O CPU type / `otool -L` dependency scan
++  `TerminateProcess` after image check -> `SIGKILL` after `proc_pidpath` image check
++  stalled `CreateNamedPipeW` server  -> stalled `AF_UNIX` listener that accepts and holds
++
++The test runs the packaged binary directly with `OCTOPPET_DATA_DIR` pointed at a
++private directory, so it never touches the user's real data or a running helper GUI.
++"""
++from __future__ import annotations
++
++import argparse
++import ctypes
++import importlib.util
++import json
++import os
++import platform
++import shutil
++import signal
++import socket
++import struct
++import subprocess
++import tempfile
++import threading
++import time
++import unittest
++import zipfile
++from concurrent.futures import ThreadPoolExecutor
++from pathlib import Path
++
++# CPU_TYPE_ARM64 from <mach/machine.h>; any value != CPU_TYPE_X86_64 exercises the
++# architecture rejection, and this one is a real, recognizable Mach-O CPU type.
++CPU_TYPE_ARM64 = 0x0100000C
++
++spec = importlib.util.spec_from_file_location(
++    "packager", Path(__file__).with_name("package_pd_component_macos.py")
++)
++packager = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(packager)
++OPTIONS = None
++
++
++def recv_exact(sock: socket.socket, count: int) -> bytes:
++    """Read exactly `count` bytes from a socket or raise once it closes early."""
++    data = b""
++    while len(data) < count:
++        chunk = sock.recv(count - len(data))
++        if not chunk:
++            raise EOFError("socket closed before the complete frame")
++        data += chunk
++    return data
++
++
++class ComponentAcceptance(unittest.TestCase):
++    @classmethod
++    def setUpClass(cls):
++        if platform.system() != "Darwin" or platform.machine() != "x86_64":
++            raise unittest.SkipTest("macOS x86_64 runtime tests")
++        cls.temporary = tempfile.TemporaryDirectory(prefix="paldee-pet-acceptance-")
++        cls.root = Path(cls.temporary.name)
++        cls.installation = cls.root / "组件 安装测试" / "versions" / "test-version"
++        cls.user_data = cls.root / "独立 用户数据"
++        cls.user_data.mkdir()
++        cls.user_data.joinpath("retained.txt").write_text("retain-user-data", encoding="utf-8")
++        cls.user_data.joinpath("config.json").write_text(
++            json.dumps(
++                {
++                    "mascotId": "taiji-bot",
++                    "shortcutOpenPet": "",
++                    "shortcutOpenHome": "",
++                    "username": "",
++                }
++            ),
++            encoding="utf-8",
++        )
++        cls.manifest = json.loads(
++            (OPTIONS.package_root / "latest-macos-x86_64.json").read_text(encoding="utf-8")
++        )
++        cls.catalog = json.loads(
++            (OPTIONS.package_root / "catalog-entry-macos-x86_64.json").read_text(encoding="utf-8")
++        )
++        cls.archive = OPTIONS.package_root / cls.manifest["version"] / (
++            f"paldee-pet-{cls.manifest['version']}-macos-x86_64.zip"
++        )
++        with zipfile.ZipFile(cls.archive) as bundle:
++            bundle.extractall(cls.installation)
++        # Archive permissions are a hint; the caller restores the executable bit.
++        for name in (packager.ENTRY, packager.BRIDGE):
++            (cls.installation / name).chmod(0o755)
++        cls.exe = cls.installation / packager.ENTRY
++        cls.env = dict(os.environ, OCTOPPET_DATA_DIR=str(cls.user_data))
++
++    def invoke(self, command, expected=0, extra=(), env=None):
++        result = subprocess.run(
++            [str(self.exe), command, "--json", *extra],
++            env=env or self.env,
++            capture_output=True,
++            text=True,
++            encoding="utf-8",
++            timeout=22,
++        )
++        self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
++        value = json.loads(result.stdout)
++        self.assertEqual(value["protocol"], packager.PROTOCOL)
++        self.assertEqual(value["id"], packager.ID)
++        self.assertEqual(value["version"], self.manifest["version"])
++        return value
++
++    def setUp(self):
++        self.invoke("stop")
++
++    def tearDown(self):
++        if self.exe.exists():
++            self.invoke("stop")
++
++    @classmethod
++    def tearDownClass(cls):
++        if cls.exe.exists():
++            subprocess.run(
++                [str(cls.exe), "stop", "--json"],
++                env=cls.env,
++                capture_output=True,
++                timeout=22,
++            )
++        cls.temporary.cleanup()
++
++    def test_archive_metadata_architecture_and_allowlist(self):
++        result = packager.validate_archive(self.archive, self.manifest, self.catalog)
++        self.assertEqual(result["entry"], packager.ENTRY)
++        with zipfile.ZipFile(self.archive) as bundle:
++            metadata = json.loads(bundle.read("component.json"))
++            self.assertIs(metadata["launchable"], True)
++            self.assertEqual(metadata["settings"][0]["key"], "start_with_helper")
++            self.assertIs(metadata["settings"][0]["default"], False)
++            for name in bundle.namelist():
++                self.assertTrue(
++                    name
++                    in [
++                        "component.json",
++                        "LICENSE",
++                        packager.ENTRY,
++                        packager.BRIDGE,
++                    ]
++                    or name.startswith("licenses/"),
++                    name,
++                )
++
++    def test_chinese_space_path_and_repeat_launch(self):
++        first = self.invoke("start")
++        self.assertTrue(first["running"])
++        self.assertTrue(os.path.samefile(first["data_dir"], self.user_data))
++        self.assertEqual(self.invoke("start")["pid"], first["pid"])
++        # The ordinary double-click path (no JSON args) is a no-op when already running.
++        repeated = subprocess.run([str(self.exe)], env=self.env, capture_output=True, timeout=22)
++        self.assertEqual(repeated.returncode, 0, repeated.stderr)
++        self.assertEqual(self.invoke("status")["pid"], first["pid"])
++        self.assertEqual(
++            {p.name for p in self.installation.iterdir()},
++            {"component.json", "LICENSE", packager.ENTRY, packager.BRIDGE, "licenses"},
++        )
++
++    def test_concurrent_start_has_one_owner(self):
++        # Repeat cold starts to cover both contenders winning the ownership race.
++        for attempt in range(5):
++            with self.subTest(attempt=attempt):
++                self.invoke("stop")
++                with ThreadPoolExecutor(max_workers=2) as pool:
++                    values = list(pool.map(lambda _: self.invoke("start"), range(2)))
++                self.assertEqual(values[0]["pid"], values[1]["pid"])
++                self.assertEqual(self.invoke("status")["pid"], values[0]["pid"])
++
++    def test_start_and_status_queries_do_not_end_the_host(self):
++        first = self.invoke("start")
++        for attempt in range(10):
++            with self.subTest(attempt=attempt), ThreadPoolExecutor(max_workers=3) as pool:
++                values = list(pool.map(lambda command: self.invoke(command), ["start", "status", "status"]))
++                self.assertTrue(all(value["running"] for value in values))
++                self.assertEqual({value["pid"] for value in values}, {first["pid"]})
++        self.assertEqual(self.invoke("status")["pid"], first["pid"])
++
++    def test_show_hide_and_normal_stop(self):
++        pid = self.invoke("start")["pid"]
++        self.assertFalse(self.invoke("hide")["visible"])
++        self.assertFalse(self.invoke("start")["visible"])
++        self.assertTrue(self.invoke("show")["visible"])
++        stopped = self.invoke("stop")
++        self.assertFalse(stopped["running"])
++        self.assertIsNone(stopped["pid"])
++        self.assertFalse(self.invoke("stop")["running"])
++        self.assertFalse(self.invoke("status")["running"])
++        self.assertIsInstance(pid, int)
++
++    def test_abnormal_exit_releases_ownership(self):
++        first = self.invoke("start")
++        pid = first["pid"]
++        # Verify the image first so a recycled pid can never terminate the wrong process.
++        libproc = ctypes.CDLL("/usr/lib/libproc.dylib")
++        libproc.proc_pidpath.restype = ctypes.c_int32
++        libproc.proc_pidpath.argtypes = [ctypes.c_int32, ctypes.c_void_p, ctypes.c_uint32]
++        buffer = ctypes.create_string_buffer(4096)
++        length = libproc.proc_pidpath(pid, buffer, len(buffer))
++        self.assertGreater(length, 0, "proc_pidpath resolved no image for the owned pid")
++        self.assertEqual(
++            Path(buffer.value.decode("utf-8", "replace")).resolve(),
++            self.exe.resolve(),
++        )
++        os.kill(pid, signal.SIGKILL)
++        deadline = time.monotonic() + 8
++        while self.invoke("status")["running"] and time.monotonic() < deadline:
++            time.sleep(0.1)
++        self.assertFalse(self.invoke("status")["running"])
++        self.assertTrue(self.invoke("start")["running"])
++
++    def test_invalid_commands_and_not_running(self):
++        self.assertEqual(self.invoke("shell", expected=2)["error"]["code"], "INVALID_ARGUMENT")
++        self.assertEqual(self.invoke("show", expected=4)["error"]["code"], "NOT_RUNNING")
++        self.assertEqual(self.invoke("hide", expected=4)["error"]["code"], "NOT_RUNNING")
++        self.assertEqual(
++            self.invoke("status", expected=2, extra=("--timeout-ms", "99999"))["error"]["code"],
++            "INVALID_ARGUMENT",
++        )
++
++    def test_protocol_negotiation_refuses_wrong_version(self):
++        value = self.invoke("start")
++        client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
++        try:
++            client.connect(value["control_pipe"])
++            request = json.dumps(
++                {"protocol": "octoppet-component@99", "command": "hide"}
++            ).encode()
++            client.sendall(struct.pack("<I", len(request)) + request)
++            length = struct.unpack("<I", recv_exact(client, 4))[0]
++            result = json.loads(recv_exact(client, length))
++            client.sendall(b"\x01")  # ack the reply so the server completes the exchange
++        finally:
++            client.close()
++        self.assertFalse(result["ok"])
++        self.assertEqual(result["error"]["code"], "UNSUPPORTED_PROTOCOL")
++        self.assertTrue(self.invoke("status")["visible"])
++
++    def test_timeout_is_bounded_and_structured(self):
++        name = self.invoke("status")["control_pipe"]
++        try:
++            os.unlink(name)
++        except FileNotFoundError:
++            pass
++        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
++        server.bind(name)
++        os.chmod(name, 0o600)
++        server.listen(1)
++        accepted = {"client": None}
++
++        def stalled_test_server():
++            try:
++                client, _ = server.accept()
++                accepted["client"] = client
++                # Hold the connection open without replying; the client's bounded read
++                # times out and surfaces a structured TIMEOUT well below the test budget.
++                time.sleep(4)
++            finally:
++                if accepted["client"] is not None:
++                    accepted["client"].close()
++                server.close()
++                try:
++                    os.unlink(name)
++                except FileNotFoundError:
++                    pass
++
++        thread = threading.Thread(target=stalled_test_server, daemon=True)
++        thread.start()
++        try:
++            start = time.monotonic()
++            value = self.invoke("status", expected=5, extra=("--timeout-ms", "200"))
++            self.assertEqual(value["error"]["code"], "TIMEOUT")
++            self.assertLess(time.monotonic() - start, 5)
++        finally:
++            thread.join(timeout=6)
++        self.assertFalse(thread.is_alive())
++
++    def test_user_directory_inside_component_is_rejected(self):
++        managed_root = self.installation.parent.parent
++        forbidden = [
++            self.installation,
++            managed_root,
++            managed_root / "user-data",
++            managed_root / "versions" / "0.1.0" / "user-data",
++        ]
++        for path in forbidden:
++            existed = path.exists()
++            value = self.invoke("status", expected=8, env=dict(self.env, OCTOPPET_DATA_DIR=str(path)))
++            self.assertEqual(value["error"]["code"], "IO_ERROR")
++            self.assertIn("outside the component", value["error"]["message"])
++            if not existed:
++                self.assertFalse(path.exists())
++
++    def test_bad_metadata_size_hash_and_arch_are_rejected(self):
++        for manifest in [
++            dict(self.manifest, size=self.manifest["size"] + 1),
++            dict(self.manifest, sha256="0" * 64),
++        ]:
++            with self.assertRaises(ValueError):
++                packager.validate_archive(self.archive, manifest, self.catalog)
++        with self.assertRaises(ValueError):
++            packager.validate_archive(self.archive, self.manifest, dict(self.catalog, id="other"))
++        # A thin Mach-O with a non-x86_64 CPU type must be rejected at packaging time.
++        path = self.root / "arm64-fixture"
++        data = bytearray(8)
++        data[:4] = b"\xcf\xfa\xed\xfe"  # MH_MAGIC_64, little-endian
++        struct.pack_into("<I", data, 4, CPU_TYPE_ARM64)
++        path.write_bytes(data)
++        self.assertEqual(packager.macho_cpu_type(path), CPU_TYPE_ARM64)
++        with self.assertRaisesRegex(ValueError, "Only macOS x86_64 is supported"):
++            packager.package(
++                argparse.Namespace(
++                    version=self.manifest["version"],
++                    base_url="https://www.xiaozs.com/sah/components/paldee-pet",
++                    pet=path,
++                    bridge=self.installation / packager.BRIDGE,
++                    bridge_root=self.installation,
++                )
++            )
++
++    def test_zz_uninstall_preserves_independent_user_data(self):
++        self.invoke("start")
++        self.invoke("stop")
++        managed_root = self.installation.parent.parent
++        self.assertTrue(managed_root.resolve().is_relative_to(self.root.resolve()))
++        shutil.rmtree(managed_root)
++        self.assertFalse(managed_root.exists())
++        self.assertEqual(
++            self.user_data.joinpath("retained.txt").read_text(encoding="utf-8"),
++            "retain-user-data",
++        )
++        self.assertTrue(self.user_data.joinpath("config.json").is_file())
++
++
++def main():
++    global OPTIONS
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--package-root", type=Path, required=True)
++    parser.add_argument("--report", type=Path, required=True)
++    OPTIONS = parser.parse_args()
++    suite = unittest.defaultTestLoader.loadTestsFromTestCase(ComponentAcceptance)
++    result = unittest.TextTestRunner(verbosity=2).run(suite)
++    report = {
++        "tests": result.testsRun,
++        "failures": len(result.failures),
++        "errors": len(result.errors),
++        "skipped": len(result.skipped),
++        "success": result.wasSuccessful(),
++        "scope": "isolated macOS x86_64 package; Chinese/space installation path; no helper GUI integration",
++    }
++    OPTIONS.report.parent.mkdir(parents=True, exist_ok=True)
++    OPTIONS.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
++    raise SystemExit(0 if result.wasSuccessful() else 1)
++
++
++if __name__ == "__main__":
++    main()
 diff --git a/src-tauri/Cargo.lock b/src-tauri/Cargo.lock
-index f0bc3616687abea17f1564f9c63763296bbea9be..2ae9f9c01c932a7b31dd2d2aee3048e8e9c0412a 100644
+index f0bc3616687abea17f1564f9c63763296bbea9be..182409b1ee95c55f6ec68cca6ab1b6e99143ef1b 100644
 --- a/src-tauri/Cargo.lock
 +++ b/src-tauri/Cargo.lock
 @@ -2651,25 +2651,6 @@ dependencies = [
@@ -1988,7 +2993,7 @@ index f0bc3616687abea17f1564f9c63763296bbea9be..2ae9f9c01c932a7b31dd2d2aee3048e8
  
 +[[package]]
 +name = "paldee-pet"
-+version = "0.2.3"
++version = "0.2.5"
 +dependencies = [
 + "keyring",
 + "objc2",
@@ -2011,7 +3016,7 @@ index f0bc3616687abea17f1564f9c63763296bbea9be..2ae9f9c01c932a7b31dd2d2aee3048e8
  name = "pango"
  version = "0.18.3"
 diff --git a/src-tauri/Cargo.toml b/src-tauri/Cargo.toml
-index 717588fac203691fe3497400898e876ee656d68f..34903199c732e45c6d74cb70fe8aa5f5abbc373d 100644
+index 717588fac203691fe3497400898e876ee656d68f..a7c4ec6f7f2a855bb8ff7a9c3614109b4ab93491 100644
 --- a/src-tauri/Cargo.toml
 +++ b/src-tauri/Cargo.toml
 @@ -1,6 +1,6 @@
@@ -2019,7 +3024,7 @@ index 717588fac203691fe3497400898e876ee656d68f..34903199c732e45c6d74cb70fe8aa5f5
 -name = "octop-pet"
 -version = "0.2.0"
 +name = "paldee-pet"
-+version = "0.2.3"
++version = "0.2.5"
  description = "Desktop companion for a remote Octop instance"
  authors = ["you"]
  edition = "2021"
@@ -2710,49 +3715,733 @@ index 0000000000000000000000000000000000000000..60e50aa27f39b9aa7c3784840ea5412e
 +        assert_eq!(value["error"]["code"], "NOT_RUNNING");
 +    }
 +}
+diff --git a/src-tauri/src/component_runtime_macos.rs b/src-tauri/src/component_runtime_macos.rs
+new file mode 100644
+index 0000000000000000000000000000000000000000..bebff1dc6d8f0a7bbc984f8d411b37d59110a81d
+--- /dev/null
++++ b/src-tauri/src/component_runtime_macos.rs
+@@ -0,0 +1,645 @@
++//! macOS current-user lifecycle control for the `octoppet-component@1`
++//! component protocol.
++//!
++//! Mirrors `component_runtime.rs` (Windows) so a calling helper sees the same
++//! commands, JSON payloads, error codes and exit codes. Only the transport
++//! differs: Windows owns a current-user named pipe, macOS binds a Unix domain
++//! socket inside the user data directory, which gives the same per-user
++//! isolation because that directory is created mode 0700.
++//!
++//! Scope mapping (Windows -> macOS):
++//!   named pipe ACL          -> per-user `$TMPDIR` (mode 0700) plus socket mode 0600
++//!   user SID                -> owning uid, encoded in the socket file name
++//!   data directory hash     -> the same FNV-1a hash, encoded in the file name
++//!   dev/release split       -> `dev`/`release` socket file name segment
++//!   logon session           -> not reproduced; see `socket_path`
++//!   `GetNamedPipeServerProcessId` -> `LOCAL_PEERPID` peer credential check
++use serde::{Deserialize, Serialize};
++use serde_json::{json, Value};
++use std::{
++    fs,
++    io::{self, Read, Write},
++    os::unix::{
++        ffi::OsStrExt,
++        fs::{DirBuilderExt, PermissionsExt},
++        io::{AsRawFd, RawFd},
++        net::{UnixListener, UnixStream},
++    },
++    path::{Path, PathBuf},
++    process::{Command, Stdio},
++    sync::mpsc,
++    time::{Duration, Instant},
++};
++use tauri::Manager;
++
++pub const PROTOCOL: &str = "octoppet-component@1";
++const VERSION: &str = env!("CARGO_PKG_VERSION");
++const MAX_FRAME: usize = 8192;
++/// Server-side bound for reading a request and writing a reply.
++const IO_DEADLINE: Duration = Duration::from_secs(3);
++/// Server-side bound for the window work handed to the main thread.
++const MAIN_THREAD_DEADLINE: Duration = Duration::from_secs(2);
++/// `sun_path` is 104 bytes including the terminating NUL on macOS.
++const MAX_SOCKET_PATH: usize = 100;
++
++// <sys/file.h>
++const LOCK_EX: i32 = 2;
++const LOCK_NB: i32 = 4;
++// <sys/un.h>
++const SOL_LOCAL: i32 = 0;
++const LOCAL_PEERPID: i32 = 0x002;
++// <sys/signal.h>
++const EPERM: i32 = 1;
++
++extern "C" {
++    fn flock(fd: RawFd, operation: i32) -> i32;
++    fn kill(pid: i32, signal: i32) -> i32;
++    fn getuid() -> u32;
++    fn getsockopt(
++        socket: RawFd,
++        level: i32,
++        option_name: i32,
++        option_value: *mut core::ffi::c_void,
++        option_len: *mut u32,
++    ) -> i32;
++}
++
++#[derive(Debug, Serialize, Deserialize)]
++struct Request {
++    protocol: String,
++    command: String,
++}
++
++pub fn data_dir() -> Result<PathBuf, String> {
++    let path = std::env::var_os("OCTOPPET_DATA_DIR")
++        .map(PathBuf::from)
++        .or_else(|| {
++            std::env::var_os("HOME")
++                .map(|home| PathBuf::from(home).join("Library/Application Support/com.octop.pet"))
++        })
++        .ok_or("HOME is unavailable")?;
++    if !path.is_absolute() {
++        return Err("user data directory must be absolute".into());
++    }
++    // Resolve existing ancestors before creating anything, including symlink targets.
++    let mut ancestor = path;
++    let mut suffix = Vec::new();
++    while !ancestor.exists() {
++        suffix.push(
++            ancestor
++                .file_name()
++                .ok_or("invalid user data path")?
++                .to_os_string(),
++        );
++        if !ancestor.pop() {
++            return Err("invalid user data path".into());
++        }
++    }
++    let mut path = ancestor.canonicalize().map_err(|e| e.to_string())?;
++    for name in suffix.into_iter().rev() {
++        path.push(name);
++    }
++    let exe_dir = std::env::current_exe()
++        .map_err(|e| e.to_string())?
++        .parent()
++        .ok_or("executable directory is unavailable")?
++        .canonicalize()
++        .map_err(|e| e.to_string())?;
++    let managed_root = exe_dir
++        .parent()
++        .filter(|p| {
++            p.file_name()
++                .is_some_and(|name| name.to_string_lossy().eq_ignore_ascii_case("versions"))
++        })
++        .and_then(|p| p.parent())
++        .unwrap_or(&exe_dir);
++    if path.starts_with(managed_root) || managed_root.starts_with(&path) {
++        return Err("user data must be outside the component directory".into());
++    }
++    // 0700 stands in for the Windows current-user-only pipe ACL.
++    fs::DirBuilder::new()
++        .recursive(true)
++        .mode(0o700)
++        .create(&path)
++        .map_err(|e| e.to_string())?;
++    Ok(path)
++}
++
++/// Socket directory. macOS points `TMPDIR` at a per-user directory with mode
++/// 0700, so another user cannot pre-create the socket. It is also short, which
++/// matters because `sun_path` is only 104 bytes including the terminator.
++fn socket_dir() -> PathBuf {
++    std::env::var_os("TMPDIR")
++        .map(PathBuf::from)
++        .filter(|path| path.is_absolute() && path.is_dir())
++        .unwrap_or_else(|| PathBuf::from("/tmp"))
++}
++
++/// Fixed FNV-1a scope hash over the data directory, matching the Windows
++/// implementation so the same directory always maps to the same endpoint.
++fn scope_hash() -> Result<u64, String> {
++    let mut hash = 0xcbf29ce484222325u64;
++    for byte in data_dir()?.to_string_lossy().to_lowercase().as_bytes() {
++        hash = (hash ^ *byte as u64).wrapping_mul(0x100000001b3);
++    }
++    Ok(hash)
++}
++
++/// Socket name. Keeping the endpoint short means the length of the user data
++/// directory cannot make the component unstartable.
++///
++/// The Windows implementation also folds in the logon session id. macOS has no
++/// supported equivalent for a GUI session, and guessing one would make the
++/// client and host disagree about the path, so it is deliberately omitted.
++fn socket_path() -> Result<PathBuf, String> {
++    let mode = if cfg!(debug_assertions) {
++        "dev"
++    } else {
++        "release"
++    };
++    let uid = unsafe { getuid() };
++    let hash = scope_hash()?;
++    let path = socket_dir().join(format!("octoppet-{uid}-{mode}-{hash:016x}.sock"));
++    if path.as_os_str().as_bytes().len() > MAX_SOCKET_PATH {
++        return Err("socket path is too long for this system".into());
++    }
++    Ok(path)
++}
++
++fn response(command: &str, running: bool, visible: bool) -> Value {
++    json!({"protocol":PROTOCOL,"id":"octoppet","version":VERSION,"ok":true,
++        "command":command,"running":running,"visible":visible,
++        "pid":if running {Some(std::process::id())} else {None},"error":null,
++        "data_dir":data_dir().ok(),
++        "control_pipe":socket_path().ok().map(|p| p.to_string_lossy().into_owned())})
++}
++
++fn failure(command: &str, code: &str, message: impl ToString) -> Value {
++    json!({"protocol":PROTOCOL,"id":"octoppet","version":VERSION,"ok":false,
++        "command":command,"error":{"code":code,"message":message.to_string()}})
++}
++
++fn command_valid(command: &str) -> bool {
++    matches!(command, "status" | "start" | "stop" | "show" | "hide")
++}
++
++fn read_frame<R: Read>(stream: &mut R) -> io::Result<Vec<u8>> {
++    let mut header = [0u8; 4];
++    stream.read_exact(&mut header)?;
++    let len = u32::from_le_bytes(header) as usize;
++    if len == 0 || len > MAX_FRAME {
++        return Err(io::Error::new(
++            io::ErrorKind::InvalidData,
++            "invalid frame size",
++        ));
++    }
++    let mut frame = vec![0; len];
++    stream.read_exact(&mut frame)?;
++    Ok(frame)
++}
++
++fn write_frame<W: Write>(stream: &mut W, value: &Value) -> io::Result<()> {
++    let frame = serde_json::to_vec(value)?;
++    if frame.len() > MAX_FRAME {
++        return Err(io::Error::new(
++            io::ErrorKind::InvalidData,
++            "response too large",
++        ));
++    }
++    stream.write_all(&(frame.len() as u32).to_le_bytes())?;
++    stream.write_all(&frame)?;
++    stream.flush()
++}
++
++/// A socket file with no listener is a crashed host, not a running one, so it
++/// maps onto the same "not found" outcome the Windows transport reports.
++fn connect(path: &Path) -> io::Result<UnixStream> {
++    match UnixStream::connect(path) {
++        Ok(stream) => Ok(stream),
++        Err(error)
++            if matches!(
++                error.kind(),
++                io::ErrorKind::NotFound | io::ErrorKind::ConnectionRefused
++            ) =>
++        {
++            Err(io::Error::new(io::ErrorKind::NotFound, error.to_string()))
++        }
++        Err(error) => Err(error),
++    }
++}
++
++fn peer_pid(stream: &UnixStream) -> io::Result<u32> {
++    let mut pid: i32 = 0;
++    let mut len = size_of::<i32>() as u32;
++    let result = unsafe {
++        getsockopt(
++            stream.as_raw_fd(),
++            SOL_LOCAL,
++            LOCAL_PEERPID,
++            (&mut pid as *mut i32).cast(),
++            &mut len,
++        )
++    };
++    if result != 0 {
++        return Err(io::Error::last_os_error());
++    }
++    Ok(pid as u32)
++}
++
++fn rpc(path: &Path, command: &str) -> io::Result<Value> {
++    let mut client = connect(path)?;
++    client.set_read_timeout(Some(IO_DEADLINE))?;
++    client.set_write_timeout(Some(IO_DEADLINE))?;
++    write_frame(&mut client, &json!({"protocol":PROTOCOL,"command":command}))?;
++    let value: Value = serde_json::from_slice(&read_frame(&mut client)?)?;
++    if value["protocol"] != PROTOCOL || value["id"] != "octoppet" {
++        return Err(io::Error::new(
++            io::ErrorKind::InvalidData,
++            "incompatible response",
++        ));
++    }
++    // Confirm the reply came from the process that actually owns the socket.
++    let server_pid = peer_pid(&client)?;
++    if value["running"] == true && value["pid"].as_u64() != Some(server_pid as u64) {
++        return Err(io::Error::new(
++            io::ErrorKind::InvalidData,
++            "process identity mismatch",
++        ));
++    }
++    // Keep the server connected until its entire reply has been consumed.
++    client.write_all(&[1])?;
++    Ok(value)
++}
++
++// Startup can briefly refuse or drop a connection before the GUI event loop is
++// ready. Retry only idempotent probes; the caller's total deadline bounds this.
++fn startup_rpc(path: &Path, command: &str, deadline: Instant) -> io::Result<Value> {
++    loop {
++        match rpc(path, command) {
++            Err(error)
++                if matches!(command, "start" | "status")
++                    && matches!(
++                        error.kind(),
++                        io::ErrorKind::UnexpectedEof
++                            | io::ErrorKind::BrokenPipe
++                            | io::ErrorKind::WouldBlock
++                    ) =>
++            {
++                if Instant::now() >= deadline {
++                    return Err(io::Error::new(
++                        io::ErrorKind::TimedOut,
++                        "startup probe exceeded its deadline",
++                    ));
++                }
++                std::thread::sleep(Duration::from_millis(25));
++            }
++            result => return result,
++        }
++    }
++}
++
++fn process_running(pid: u32) -> bool {
++    let result = unsafe { kill(pid as i32, 0) };
++    if result == 0 {
++        return true;
++    }
++    // EPERM means the process exists but belongs to someone else.
++    io::Error::last_os_error().raw_os_error() == Some(EPERM)
++}
++
++fn timed_out(command: &str) -> Value {
++    failure(
++        command,
++        "TIMEOUT",
++        "operation exceeded its deadline; inspect status before retry",
++    )
++}
++
++fn control(path: &Path, command: &str, deadline: Instant) -> io::Result<Value> {
++    match startup_rpc(path, command, deadline) {
++        Ok(mut value) => {
++            if command == "stop" && value["ok"] == true {
++                if let Some(pid) = value["pid"].as_u64() {
++                    while process_running(pid as u32) {
++                        if Instant::now() >= deadline {
++                            return Ok(timed_out(command));
++                        }
++                        std::thread::sleep(Duration::from_millis(25));
++                    }
++                }
++                value["running"] = false.into();
++                value["visible"] = false.into();
++                value["pid"] = Value::Null;
++            }
++            Ok(value)
++        }
++        Err(error) if error.kind() == io::ErrorKind::NotFound => {
++            if matches!(command, "status" | "stop") {
++                return Ok(response(command, false, false));
++            }
++            if command != "start" {
++                return Ok(failure(command, "NOT_RUNNING", "start the component first"));
++            }
++            let mut child = spawn_host()?;
++            loop {
++                if Instant::now() >= deadline {
++                    return Ok(timed_out(command));
++                }
++                match startup_rpc(path, "start", deadline) {
++                    Ok(value) => return Ok(value),
++                    Err(error) if error.kind() == io::ErrorKind::NotFound => {}
++                    Err(error) if error.kind() == io::ErrorKind::TimedOut => {
++                        return Ok(timed_out(command))
++                    }
++                    Err(error) => return Err(error),
++                }
++                if let Some(status) = child.try_wait()? {
++                    // A competing host exits successfully after finding the existing
++                    // owner. Keep probing that owner instead of reporting failure.
++                    if !status.success() {
++                        return Ok(failure(
++                            command,
++                            "START_FAILED",
++                            format!("host exited: {status}"),
++                        ));
++                    }
++                }
++                std::thread::sleep(Duration::from_millis(50));
++            }
++        }
++        Err(error) if error.kind() == io::ErrorKind::TimedOut => Ok(timed_out(command)),
++        Err(error) => Err(error),
++    }
++}
++
++/// Serialises concurrent starts. `flock` is released by the kernel when the
++/// process exits, matching the Windows named mutex on abnormal exit.
++struct StartLock {
++    _file: fs::File,
++}
++
++impl StartLock {
++    fn acquire(socket: &Path, deadline: Instant) -> io::Result<Self> {
++        let file = fs::OpenOptions::new()
++            .create(true)
++            .truncate(false)
++            .write(true)
++            .open(socket.with_extension("start.lock"))?;
++        loop {
++            if unsafe { flock(file.as_raw_fd(), LOCK_EX | LOCK_NB) } == 0 {
++                return Ok(Self { _file: file });
++            }
++            let error = io::Error::last_os_error();
++            if error.kind() != io::ErrorKind::WouldBlock {
++                return Err(error);
++            }
++            if Instant::now() >= deadline {
++                return Err(io::Error::new(
++                    io::ErrorKind::TimedOut,
++                    "another start is still in progress",
++                ));
++            }
++            std::thread::sleep(Duration::from_millis(25));
++        }
++    }
++}
++
++fn spawn_host() -> io::Result<std::process::Child> {
++    Command::new(std::env::current_exe()?)
++        .arg("--component-host")
++        .current_dir(data_dir().map_err(io::Error::other)?)
++        .stdin(Stdio::null())
++        .stdout(Stdio::null())
++        .stderr(Stdio::null())
++        .spawn()
++}
++
++fn print_result(value: Value) -> ! {
++    let code = if value["ok"] == true {
++        0
++    } else {
++        match value["error"]["code"].as_str() {
++            Some("INVALID_ARGUMENT") => 2,
++            Some("UNSUPPORTED_PROTOCOL") => 3,
++            Some("NOT_RUNNING") => 4,
++            Some("TIMEOUT") => 5,
++            Some("START_FAILED") => 6,
++            Some("WINDOW_ERROR") => 9,
++            _ => 8,
++        }
++    };
++    println!("{value}");
++    std::process::exit(code)
++}
++
++pub struct Host {
++    listener: UnixListener,
++    path: PathBuf,
++}
++
++/// Take ownership of the component socket. Returns `Err` with `AddrInUse` when
++/// a live host already owns it, which the caller treats as a repeat launch.
++fn bind_socket(path: &Path) -> io::Result<UnixListener> {
++    if UnixStream::connect(path).is_ok() {
++        return Err(io::Error::new(
++            io::ErrorKind::AddrInUse,
++            "another instance owns the component socket",
++        ));
++    }
++    // Only a socket left behind by a crashed host can be removed here.
++    let _ = fs::remove_file(path);
++    let listener = UnixListener::bind(path)?;
++    let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o600));
++    Ok(listener)
++}
++
++/// Called before Tauri creates any windows; owning the socket is the owner lock.
++pub fn entry() -> Host {
++    let args: Vec<String> = std::env::args().skip(1).collect();
++    let path = socket_path().unwrap_or_else(|e| print_result(failure("", "IO_ERROR", e)));
++    if !args.is_empty() && args != ["--component-host"] {
++        let command = args.first().map(String::as_str).unwrap_or("");
++        let mut milliseconds = 15000;
++        let valid = command_valid(command)
++            && args.get(1).map(String::as_str) == Some("--json")
++            && (args.len() == 2
++                || (args.len() == 4
++                    && args[2] == "--timeout-ms"
++                    && args[3].parse::<u64>().is_ok_and(|n| {
++                        milliseconds = n;
++                        (100..=15000).contains(&n)
++                    })));
++        if !valid {
++            print_result(failure(
++                command,
++                "INVALID_ARGUMENT",
++                "expected command --json [--timeout-ms 100..15000]",
++            ));
++        }
++        let deadline = Instant::now() + Duration::from_millis(milliseconds);
++        let start_lock = if command == "start" {
++            Some(StartLock::acquire(&path, deadline).unwrap_or_else(|e| {
++                let code = if e.kind() == io::ErrorKind::TimedOut {
++                    "TIMEOUT"
++                } else {
++                    "IO_ERROR"
++                };
++                print_result(failure(command, code, e))
++            }))
++        } else {
++            None
++        };
++        let value = control(&path, command, deadline);
++        drop(start_lock);
++        print_result(match value {
++            Ok(value) => value,
++            Err(e) => failure(command, "IO_ERROR", e),
++        });
++    }
++    let listener = match bind_socket(&path) {
++        Ok(listener) => listener,
++        Err(_) => {
++            // A direct repeat launch is a no-op, never opens a second UI or steals focus.
++            match startup_rpc(&path, "status", Instant::now() + Duration::from_secs(15)) {
++                Ok(ref value) if value["ok"] == true => std::process::exit(0),
++                _ => print_result(failure(
++                    "start",
++                    "IO_ERROR",
++                    "unable to own the component socket",
++                )),
++            }
++        }
++    };
++    Host { listener, path }
++}
++
++fn dispatch(app: &tauri::AppHandle, request: Request) -> Value {
++    if request.protocol != PROTOCOL {
++        return failure(
++            &request.command,
++            "UNSUPPORTED_PROTOCOL",
++            "expected octoppet-component@1",
++        );
++    }
++    if !command_valid(&request.command) {
++        return failure(
++            &request.command,
++            "INVALID_ARGUMENT",
++            "unknown lifecycle command",
++        );
++    }
++    let Some(pet) = app.get_webview_window("pet") else {
++        return failure(
++            &request.command,
++            "WINDOW_ERROR",
++            "pet window is unavailable",
++        );
++    };
++    let operation = match request.command.as_str() {
++        "show" => pet.show(),
++        "hide" => {
++            for label in ["chat", "settings"] {
++                if let Some(window) = app.get_webview_window(label) {
++                    let _ = window.hide();
++                }
++            }
++            pet.hide()
++        }
++        _ => Ok(()),
++    };
++    match operation {
++        Ok(()) => response(&request.command, true, pet.is_visible().unwrap_or(false)),
++        Err(e) => failure(&request.command, "WINDOW_ERROR", e),
++    }
++}
++
++impl Host {
++    pub fn serve(self, app: tauri::AppHandle) {
++        std::thread::spawn(move || {
++            let path = self.path;
++            for stream in self.listener.incoming() {
++                let Ok(mut stream) = stream else { continue };
++                let value = match handle_request(&app, &mut stream) {
++                    Ok(value) => value,
++                    Err(_) => {
++                        drop(stream);
++                        continue;
++                    }
++                };
++                let stopped = value["ok"] == true && value["command"] == "stop";
++                drop(stream);
++                if stopped {
++                    // Remove the socket we still own so the next start binds cleanly.
++                    let _ = fs::remove_file(&path);
++                    app.exit(0);
++                    break;
++                }
++            }
++        });
++    }
++}
++
++fn handle_request(app: &tauri::AppHandle, stream: &mut UnixStream) -> io::Result<Value> {
++    stream.set_read_timeout(Some(IO_DEADLINE))?;
++    stream.set_write_timeout(Some(IO_DEADLINE))?;
++    let request: Request = serde_json::from_slice(&read_frame(stream)?)?;
++    let (send, receive) = mpsc::sync_channel(1);
++    let handle = app.clone();
++    app.run_on_main_thread(move || {
++        let _ = send.send(dispatch(&handle, request));
++    })
++    .map_err(io::Error::other)?;
++    let value = receive
++        .recv_timeout(MAIN_THREAD_DEADLINE)
++        .map_err(io::Error::other)?;
++    write_frame(stream, &value)?;
++    let mut ack = [0u8; 1];
++    let _ = stream.read_exact(&mut ack);
++    Ok(value)
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn only_lifecycle_commands_are_accepted() {
++        for command in ["status", "start", "stop", "show", "hide"] {
++            assert!(command_valid(command));
++        }
++        for command in ["exec", "shell", "window activate", ""] {
++            assert!(!command_valid(command));
++        }
++    }
++
++    #[test]
++    fn stopped_status_has_no_process_id() {
++        let value = response("status", false, false);
++        assert_eq!(value["protocol"], PROTOCOL);
++        assert_eq!(value["id"], "octoppet");
++        assert!(value["pid"].is_null());
++    }
++
++    #[test]
++    fn failure_is_structured() {
++        let value = failure("show", "NOT_RUNNING", "start first");
++        assert_eq!(value["ok"], false);
++        assert_eq!(value["error"]["code"], "NOT_RUNNING");
++    }
++
++    #[test]
++    fn frames_round_trip_and_reject_oversized_payloads() {
++        let mut buffer = Vec::new();
++        write_frame(&mut buffer, &json!({"hello":"world"})).expect("write");
++        let mut cursor = io::Cursor::new(buffer);
++        let frame = read_frame(&mut cursor).expect("read");
++        assert_eq!(
++            serde_json::from_slice::<Value>(&frame).expect("json")["hello"],
++            "world"
++        );
++
++        let mut oversized = Vec::new();
++        oversized.extend_from_slice(&((MAX_FRAME as u32) + 1).to_le_bytes());
++        assert!(read_frame(&mut io::Cursor::new(oversized)).is_err());
++    }
++}
 diff --git a/src-tauri/src/config_cmd.rs b/src-tauri/src/config_cmd.rs
-index 4d4bbe80ae813493a5285ce4f4f0eec850433e44..ff65d4aac39db29c11d01a1a4c3eba5bcdb0eb86 100644
+index 4d4bbe80ae813493a5285ce4f4f0eec850433e44..d53396e8d7b6898193fac4d2baf79d24a962adf7 100644
 --- a/src-tauri/src/config_cmd.rs
 +++ b/src-tauri/src/config_cmd.rs
-@@ -3,7 +3,9 @@ use std::{collections::HashMap, fs, path::Path, sync::Mutex};
+@@ -3,7 +3,10 @@ use std::{collections::HashMap, fs, path::Path, sync::Mutex};
  use serde::de::DeserializeOwned;
  use serde::{Deserialize, Serialize};
  use serde_json::Value;
 -use tauri::{AppHandle, Manager};
 +use tauri::AppHandle;
-+#[cfg(not(windows))]
++// Only the fallback branch resolves the config path through `app.path()`.
++#[cfg(not(any(windows, target_os = "macos")))]
 +use tauri::Manager;
  
  const CONFIG_FILE_NAME: &str = "config.json";
  static CONFIG_WRITE_LOCK: Mutex<()> = Mutex::new(());
-@@ -127,6 +129,12 @@ pub fn patch_at_path(path: &Path, patch: Value) -> Result<AppConfig, String> {
+@@ -44,7 +47,7 @@ impl Default for AppConfig {
+ 
+ pub fn select_mascot(cfg: &mut AppConfig, mascot_id: &str) -> Result<(), String> {
+     match mascot_id {
+-        "peek" | "type" | "taiji-bot" => {
++        "peek" | "type" => {
+             cfg.mascot_id = mascot_id.to_string();
+             Ok(())
+         }
+@@ -59,8 +62,13 @@ pub fn load_from_path(path: &Path) -> Result<AppConfig, String> {
+ 
+     let json = fs::read_to_string(path)
+         .map_err(|error| format!("failed to read config {}: {error}", path.display()))?;
+-    serde_json::from_str(&json)
+-        .map_err(|error| format!("failed to parse config {}: {error}", path.display()))
++    let mut cfg: AppConfig = serde_json::from_str(&json)
++        .map_err(|error| format!("failed to parse config {}: {error}", path.display()))?;
++    // Keep existing users on the default asset after retiring the extra mascot ID.
++    if cfg.mascot_id == "taiji-bot" {
++        cfg.mascot_id = "peek".into();
++    }
++    Ok(cfg)
+ }
+ 
+ pub fn save_to_path(path: &Path, cfg: &AppConfig) -> Result<(), String> {
+@@ -127,6 +135,16 @@ pub fn patch_at_path(path: &Path, patch: Value) -> Result<AppConfig, String> {
  }
  
  fn config_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
-+    #[cfg(windows)]
++    // Both component platforms resolve their user data through the lifecycle
++    // module, so `OCTOPPET_DATA_DIR` isolates a test or deployment. The macOS
++    // default is `~/Library/Application Support/com.octop.pet`, which is the
++    // same directory `app_config_dir()` returns, so existing installs do not move.
++    #[cfg(any(windows, target_os = "macos"))]
 +    {
 +        let _ = app;
 +        Ok(crate::component_runtime::data_dir()?.join(CONFIG_FILE_NAME))
 +    }
-+    #[cfg(not(windows))]
++    #[cfg(not(any(windows, target_os = "macos")))]
      app.path()
          .app_config_dir()
          .map(|path| path.join(CONFIG_FILE_NAME))
 diff --git a/src-tauri/src/lib.rs b/src-tauri/src/lib.rs
-index a52c03d4ca8a77aa5da0b446c169238b46f51fce..1bdf9897567c78f90038f9913420f7fa6c242012 100644
+index a52c03d4ca8a77aa5da0b446c169238b46f51fce..613f5f79dfd88e0c7bbd59eb8215ad2d7686a5b3 100644
 --- a/src-tauri/src/lib.rs
 +++ b/src-tauri/src/lib.rs
-@@ -1,3 +1,5 @@
+@@ -1,3 +1,8 @@
 +#[cfg(windows)]
++pub mod component_runtime;
++#[cfg(target_os = "macos")]
++#[path = "component_runtime_macos.rs"]
 +pub mod component_runtime;
  pub mod config_cmd;
  pub mod pd_bridge_cmd;
  pub mod secrets_cmd;
-@@ -6,6 +8,14 @@ pub mod window_cmd;
+@@ -6,6 +11,14 @@ pub mod window_cmd;
  
  #[cfg_attr(mobile, tauri::mobile_entry_point)]
  pub fn run() {
-+    #[cfg(windows)]
++    #[cfg(any(windows, target_os = "macos"))]
 +    let host = component_runtime::entry();
 +    #[allow(unused_mut)]
 +    let mut context = tauri::generate_context!();
@@ -2763,7 +4452,7 @@ index a52c03d4ca8a77aa5da0b446c169238b46f51fce..1bdf9897567c78f90038f9913420f7fa
      tauri::Builder::default()
          .plugin(tauri_plugin_opener::init())
          .plugin(tauri_plugin_dialog::init())
-@@ -28,7 +38,16 @@ pub fn run() {
+@@ -28,7 +41,16 @@ pub fn run() {
              }
              _ => {}
          })
@@ -2781,16 +4470,16 @@ index a52c03d4ca8a77aa5da0b446c169238b46f51fce..1bdf9897567c78f90038f9913420f7fa
              #[cfg(target_os = "macos")]
              {
                  // Desktop-pet style: stay out of Dock/Stage Manager focus fights
-@@ -40,6 +59,8 @@ pub fn run() {
+@@ -40,6 +62,8 @@ pub fn run() {
              window_cmd::ensure_dialog_windows_transparent(app.handle());
              window_cmd::apply_window_deactivate_policy(app.handle().clone())?;
              window_cmd::spawn_pet_transparency_watchdog(app.handle());
-+            #[cfg(windows)]
++            #[cfg(any(windows, target_os = "macos"))]
 +            host.serve(app.handle().clone());
              Ok(())
          })
          .invoke_handler(tauri::generate_handler![
-@@ -61,6 +82,6 @@ pub fn run() {
+@@ -61,6 +85,6 @@ pub fn run() {
              window_cmd::apply_window_deactivate_policy,
              tray::reload_hotkeys,
          ])
@@ -2810,10 +4499,10 @@ index 880b2d6c8a841904833cc374e5a0b3355b4e693a..b8e9a2d2f7b74b79c766bf9de4b0bbcb
 +    paldee_pet_lib::run()
  }
 diff --git a/src-tauri/src/pd_bridge_cmd.rs b/src-tauri/src/pd_bridge_cmd.rs
-index 1c6bad441c12d0583c4985c44dff97959062faac..7ec8d8c401167947bda075dc5528d0db07faa305 100644
+index 1c6bad441c12d0583c4985c44dff97959062faac..bf8c08f81310175508c5c90c87fc36212230dd4f 100644
 --- a/src-tauri/src/pd_bridge_cmd.rs
 +++ b/src-tauri/src/pd_bridge_cmd.rs
-@@ -1,7 +1,7 @@
+@@ -1,13 +1,19 @@
 -//! Thin adapter to the independently installed, read-only PD component.
 +//! Thin adapter to the independently installed helper CLI transport.
  use serde_json::Value;
@@ -2823,7 +4512,19 @@ index 1c6bad441c12d0583c4985c44dff97959062faac..7ec8d8c401167947bda075dc5528d0db
      path::PathBuf,
      process::{Command, Stdio},
      time::{Duration, Instant},
-@@ -16,6 +16,25 @@ fn component_entry() -> Result<PathBuf, String> {
+ };
+ 
+ fn component_entry() -> Result<PathBuf, String> {
++    // The PD CLI bridge is packaged as `pd-device-bridge.exe` on Windows and a
++    // bare `pd-device-bridge` Mach-O on macOS (see package_pd_component*.py).
++    #[cfg(windows)]
++    const BRIDGE_NAME: &str = "pd-device-bridge.exe";
++    #[cfg(not(windows))]
++    const BRIDGE_NAME: &str = "pd-device-bridge";
+     #[cfg(debug_assertions)]
+     if let Some(path) = std::env::var_os("PD_BRIDGE_COMPONENT_EXE") {
+         let path = PathBuf::from(path);
+@@ -16,6 +22,25 @@ fn component_entry() -> Result<PathBuf, String> {
          }
          return Err("开发组件路径无效".into());
      }
@@ -2838,7 +4539,7 @@ index 1c6bad441c12d0583c4985c44dff97959062faac..7ec8d8c401167947bda075dc5528d0db
 +                if metadata["id"] != "octoppet" || metadata["protocol"] != "octoppet-component@1" {
 +                    return Err("宠物组件协议不兼容".into());
 +                }
-+                let path = directory.join("pd-device-bridge.exe");
++                let path = directory.join(BRIDGE_NAME);
 +                return path
 +                    .is_file()
 +                    .then_some(path)
@@ -2849,7 +4550,19 @@ index 1c6bad441c12d0583c4985c44dff97959062faac..7ec8d8c401167947bda075dc5528d0db
      let root = std::env::var_os("SCREEN_AUTOMATION_HOME")
          .map(PathBuf::from)
          .or_else(|| {
-@@ -49,18 +68,37 @@ fn component_entry() -> Result<PathBuf, String> {
+@@ -35,10 +60,7 @@ fn component_entry() -> Result<PathBuf, String> {
+     if !valid_version(version) {
+         return Err("PD 组件版本无效".into());
+     }
+-    let path = root
+-        .join("versions")
+-        .join(version)
+-        .join("pd-device-bridge.exe");
++    let path = root.join("versions").join(version).join(BRIDGE_NAME);
+     if !path.is_file() {
+         return Err("PD 桥接组件入口缺失".into());
+     }
+@@ -49,18 +71,37 @@ fn component_entry() -> Result<PathBuf, String> {
  pub async fn pd_execute_cli(
      window: tauri::WebviewWindow,
      args: Vec<String>,
@@ -2891,7 +4604,7 @@ index 1c6bad441c12d0583c4985c44dff97959062faac..7ec8d8c401167947bda075dc5528d0db
              .stdout(Stdio::piped())
              .stderr(Stdio::null());
          #[cfg(windows)]
-@@ -69,11 +107,15 @@ pub async fn pd_execute_cli(
+@@ -69,11 +110,15 @@ pub async fn pd_execute_cli(
              command.creation_flags(0x08000000);
          }
          let mut child = command.spawn().map_err(|_| "本机桥接组件启动失败")?;
@@ -2908,7 +4621,7 @@ index 1c6bad441c12d0583c4985c44dff97959062faac..7ec8d8c401167947bda075dc5528d0db
                  .read_to_end(&mut bytes)
                  .map(|_| bytes)
          });
-@@ -87,22 +129,25 @@ pub async fn pd_execute_cli(
+@@ -87,22 +132,25 @@ pub async fn pd_execute_cli(
                  _ => {
                      let _ = child.kill();
                      let _ = child.wait();
@@ -2938,7 +4651,7 @@ index 1c6bad441c12d0583c4985c44dff97959062faac..7ec8d8c401167947bda075dc5528d0db
  }
  
  fn valid_version(version: &str) -> bool {
-@@ -126,33 +171,31 @@ mod tests {
+@@ -126,33 +174,31 @@ mod tests {
  }
  
  fn valid_cli_args(args: &[String]) -> bool {
@@ -3066,7 +4779,7 @@ index 922b044fe56b0dbadd7cf9d9418327026941c449..bc2d6f43869091dd9030213ab70ad355
          .on_menu_event(|app, event| {
              if let Err(error) = handle_menu_event(app, event.id().as_ref()) {
 diff --git a/src-tauri/tauri.conf.json b/src-tauri/tauri.conf.json
-index 745b91113b62954d99da0b4352f77c15b92adb8c..21cda10d68e188bec5a297ae13c31de318e86531 100644
+index 745b91113b62954d99da0b4352f77c15b92adb8c..777699414f1d8aedf7b956099b9a9f963108e6f7 100644
 --- a/src-tauri/tauri.conf.json
 +++ b/src-tauri/tauri.conf.json
 @@ -1,7 +1,7 @@
@@ -3075,7 +4788,7 @@ index 745b91113b62954d99da0b4352f77c15b92adb8c..21cda10d68e188bec5a297ae13c31de3
 -  "productName": "OctopPet",
 -  "version": "0.2.0",
 +  "productName": "Paldee Pet",
-+  "version": "0.2.3",
++  "version": "0.2.5",
    "identifier": "com.octop.pet",
    "build": {
      "beforeDevCommand": "npm run dev",
@@ -3089,7 +4802,7 @@ index 745b91113b62954d99da0b4352f77c15b92adb8c..21cda10d68e188bec5a297ae13c31de3
          "height": 400,
          "minWidth": 280,
 diff --git a/src-tauri/tests/command_logic.rs b/src-tauri/tests/command_logic.rs
-index 717d9a81710e88fec98a06d5b1e1044aa436ec88..4479bf023ad061a9f4ed7efb67737cf8d30f8ff5 100644
+index 717d9a81710e88fec98a06d5b1e1044aa436ec88..2ed004ef4383eaec0f84c22bc5f5f1909b0238db 100644
 --- a/src-tauri/tests/command_logic.rs
 +++ b/src-tauri/tests/command_logic.rs
 @@ -4,7 +4,7 @@ use std::{
@@ -3101,6 +4814,17 @@ index 717d9a81710e88fec98a06d5b1e1044aa436ec88..4479bf023ad061a9f4ed7efb67737cf8
      config_cmd::{load_from_path, patch_at_path, save_to_path, select_mascot, AppConfig},
      secrets_cmd::{
          delete_secret_from_file, get_secret_from_file, secret_account, set_secret_in_file,
+@@ -60,8 +60,8 @@ fn tray_mascot_selection_updates_only_supported_mascots() {
+     select_mascot(&mut cfg, "type").unwrap();
+     assert_eq!(cfg.mascot_id, "type");
+ 
+-    select_mascot(&mut cfg, "taiji-bot").unwrap();
+-    assert_eq!(cfg.mascot_id, "taiji-bot");
++    assert!(select_mascot(&mut cfg, "taiji-bot").is_err());
++    assert_eq!(cfg.mascot_id, "type");
+ 
+     select_mascot(&mut cfg, "peek").unwrap();
+     assert_eq!(cfg.mascot_id, "peek");
 @@ -76,7 +76,7 @@ fn config_file_defaults_when_missing_and_round_trips() {
          .duration_since(UNIX_EPOCH)
          .unwrap()
@@ -3110,7 +4834,37 @@ index 717d9a81710e88fec98a06d5b1e1044aa436ec88..4479bf023ad061a9f4ed7efb67737cf8
      let path = dir.join("config.json");
  
      assert_eq!(load_from_path(&path).unwrap(), AppConfig::default());
-@@ -98,7 +98,7 @@ fn config_patch_updates_only_owned_fields() {
+@@ -92,13 +92,37 @@ fn config_file_defaults_when_missing_and_round_trips() {
+     fs::remove_dir_all(dir).unwrap();
+ }
+ 
++#[test]
++fn retired_taiji_mascot_loads_as_peek_without_changing_other_settings() {
++    let unique = SystemTime::now()
++        .duration_since(UNIX_EPOCH)
++        .unwrap()
++        .as_nanos();
++    let dir = std::env::temp_dir().join(format!("paldee-pet-mascot-{unique}"));
++    let path = dir.join("config.json");
++    let original = AppConfig {
++        mascot_id: "taiji-bot".into(),
++        username: "alice".into(),
++        pet_x: Some(42.5),
++        ..AppConfig::default()
++    };
++    save_to_path(&path, &original).unwrap();
++    let before = fs::read(&path).unwrap();
++    let loaded = load_from_path(&path).unwrap();
++    assert_eq!(loaded.mascot_id, "peek");
++    assert_eq!(loaded.username, original.username);
++    assert_eq!(loaded.pet_x, original.pet_x);
++    assert_eq!(fs::read(&path).unwrap(), before);
++    fs::remove_dir_all(dir).unwrap();
++}
++
+ #[test]
+ fn config_patch_updates_only_owned_fields() {
+     let unique = SystemTime::now()
          .duration_since(UNIX_EPOCH)
          .unwrap()
          .as_nanos();
@@ -3119,7 +4873,7 @@ index 717d9a81710e88fec98a06d5b1e1044aa436ec88..4479bf023ad061a9f4ed7efb67737cf8
      let path = dir.join("config.json");
      let original = AppConfig {
          base_url: "https://old.example".into(),
-@@ -142,7 +142,7 @@ fn keep_windows_visible_defaults_when_missing_from_file() {
+@@ -142,7 +166,7 @@ fn keep_windows_visible_defaults_when_missing_from_file() {
          .duration_since(UNIX_EPOCH)
          .unwrap()
          .as_nanos();
@@ -3128,7 +4882,7 @@ index 717d9a81710e88fec98a06d5b1e1044aa436ec88..4479bf023ad061a9f4ed7efb67737cf8
      fs::create_dir_all(&dir).unwrap();
      let path = dir.join("config.json");
      fs::write(&path, r#"{"baseUrl":"https://x.example"}"#).unwrap();
-@@ -168,7 +168,7 @@ fn debug_secrets_file_round_trips_without_keyring() {
+@@ -168,7 +192,7 @@ fn debug_secrets_file_round_trips_without_keyring() {
          .duration_since(UNIX_EPOCH)
          .unwrap()
          .as_nanos();
@@ -3388,7 +5142,7 @@ index 452d9d3549cb400231ecc1b0139eda1c3041f691..6e40ff4718b8289a19c471e173d34665
  document.documentElement.dataset.windowLabel = label;
  
 diff --git a/src/windows/SettingsWindow.tsx b/src/windows/SettingsWindow.tsx
-index c5475c732d530e56ad822cad339ca17fa699557b..610964e43cc18fe00ececd9f047f9a15022b08d9 100644
+index c5475c732d530e56ad822cad339ca17fa699557b..742be574ffe118167868d3e2718875acd45f8323 100644
 --- a/src/windows/SettingsWindow.tsx
 +++ b/src/windows/SettingsWindow.tsx
 @@ -1,5 +1,6 @@
@@ -3398,7 +5152,15 @@ index c5475c732d530e56ad822cad339ca17fa699557b..610964e43cc18fe00ececd9f047f9a15
  import ShortcutRecorder from "../components/ShortcutRecorder";
  import WindowCloseButton from "../components/WindowCloseButton";
  import {
-@@ -476,7 +477,7 @@ export default function SettingsWindow() {
+@@ -25,7 +26,6 @@ const SETTINGS_WIDTH = 480;
+ const MASCOT_OPTIONS: Array<{ id: MascotId; label: string }> = [
+   { id: "peek", label: "Peek" },
+   { id: "type", label: "Type" },
+-  { id: "taiji-bot", label: "太极机器人" },
+ ];
+ 
+ const TABS: Array<{ id: SettingsTab; label: string }> = [
+@@ -476,7 +476,7 @@ export default function SettingsWindow() {
              <div className="settings-rows settings-about">
                <div className="settings-row">
                  <span>应用</span>
@@ -3407,3 +5169,139 @@ index c5475c732d530e56ad822cad339ca17fa699557b..610964e43cc18fe00ececd9f047f9a15
                </div>
                <div className="settings-row">
                  <span>版本</span>
+diff --git a/scripts/diagnose-pet-windows.ps1 b/scripts/diagnose-pet-windows.ps1
+new file mode 100644
+index 0000000000000000000000000000000000000000..b002b7c41367a9e07c8e63a178cff063bd4f45c5
+--- /dev/null
++++ b/scripts/diagnose-pet-windows.ps1
+@@ -0,0 +1,49 @@
++# Read-only diagnostics for an installed Pet. Does not read credentials or chat history.
++$ErrorActionPreference = 'Stop'
++Add-Type -TypeDefinition @'
++using System;
++using System.Collections.Generic;
++using System.Runtime.InteropServices;
++public class PaldeeWindowDiagnostics {
++  public delegate bool Callback(IntPtr hwnd, IntPtr data);
++  [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
++  public class WindowInfo { public long Handle; public uint ProcessId; public bool Visible; public Rect Bounds; }
++  [DllImport("user32.dll")] static extern bool EnumWindows(Callback callback, IntPtr data);
++  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
++  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
++  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
++  public static WindowInfo[] Read(uint[] ids) {
++    var found = new List<WindowInfo>();
++    EnumWindows(delegate(IntPtr hwnd, IntPtr data) {
++      uint pid; GetWindowThreadProcessId(hwnd, out pid);
++      if (Array.IndexOf(ids, pid) >= 0) {
++        Rect rect; GetWindowRect(hwnd, out rect);
++        found.Add(new WindowInfo { Handle=hwnd.ToInt64(), ProcessId=pid, Visible=IsWindowVisible(hwnd), Bounds=rect });
++      }
++      return true;
++    }, IntPtr.Zero);
++    return found.ToArray();
++  }
++}
++'@
++Add-Type -AssemblyName System.Windows.Forms
++$petProcesses = @(Get-Process -Name 'paldee-pet','octop-pet' -ErrorAction SilentlyContinue)
++$systemInfo = Get-CimInstance Win32_OperatingSystem
++$dataDirectory = if ($env:OCTOPPET_DATA_DIR) { $env:OCTOPPET_DATA_DIR } else { Join-Path $env:APPDATA 'com.octop.pet' }
++$configFile = Join-Path $dataDirectory 'config.json'
++$petConfig = $null
++if (Test-Path -LiteralPath $configFile) {
++    $config = Get-Content -LiteralPath $configFile -Raw -Encoding UTF8 | ConvertFrom-Json
++    $petConfig = $config | Select-Object mascotId,petSize,petX,petY
++}
++[ordered]@{
++    system = $systemInfo.Caption
++    build = $systemInfo.BuildNumber
++    graphics = @(Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion)
++    processes = @($petProcesses | Select-Object Id,ProcessName)
++    screens = @([System.Windows.Forms.Screen]::AllScreens | ForEach-Object {
++        @{ primary=$_.Primary; left=$_.Bounds.Left; top=$_.Bounds.Top; width=$_.Bounds.Width; height=$_.Bounds.Height }
++    })
++    windows = @([PaldeeWindowDiagnostics]::Read([System.UInt32[]]@($petProcesses | ForEach-Object { $_.Id })))
++    petConfig = $petConfig
++} | ConvertTo-Json -Depth 6
+diff --git a/scripts/diagnose-pet-windows.cmd b/scripts/diagnose-pet-windows.cmd
+new file mode 100644
+index 0000000000000000000000000000000000000000..eb703cf80db35c43355dc3dc81ee7e0a1474eaaa
+--- /dev/null
++++ b/scripts/diagnose-pet-windows.cmd
+@@ -0,0 +1,3 @@
++@echo off
++powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0diagnose-pet-windows.ps1"
++pause
+diff --git a/docs/PALDEE_PET_0.2.4_RELEASE.md b/docs/PALDEE_PET_0.2.4_RELEASE.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..f59be25ba097794057fd6fb151c69edfddb13b72
+--- /dev/null
++++ b/docs/PALDEE_PET_0.2.4_RELEASE.md
+@@ -0,0 +1,15 @@
++# Paldee Pet 0.2.4 Windows x64 交付
++
++2026-10-14。本版在原功能组件格式中加入只读诊断脚本与双击入口，不修改小助手主程序、服务器桥接或全局目录，不包含 Windows x86。
++
++新增 `diagnose-pet-windows.ps1`、`diagnose-pet-windows.cmd`；打包器复制二者并验证存在，组件验收白名单同步更新。诊断输出系统、显卡、Pet 进程/窗口位置与宠物布局配置，不读取密码或聊天内容，不上传，不修改配置。兼容 Windows PowerShell 5.1；读取独立用户数据目录，支持 OCTOPPET_DATA_DIR 隔离。
++
++正式 ZIP：`D:/ai/xiaozs.com/xiaozs/sah/components/paldee-pet/0.2.4/paldee-pet-0.2.4-windows-x64.zip`，15,428,493 字节，SHA-256 `4473d326469db57e84f36b34fbd9b4aca09f60d80d38605b77cbba924dcab449`。
++
++签名清单：`D:/ai/xiaozs.com/xiaozs/sah/components/paldee-pet/latest-windows-x64.json`，637 字节，SHA-256 `5da57d35b3073c4e2039d3e11efa2e7537f6c84d66559ecd76327b5fc1f075f5`。使用既有产品密钥，公钥验签通过；未创建或复制私钥。未签名清单保存在组件构建目录，签名验证报告保存在 `D:/ai/xiaozs.com/component-release-staging/paldee-pet-0.2.4/signing-verification.json`。
++
++上传顺序：先 ZIP 到 `/www/wwwroot/xiaozs/sah/components/paldee-pet/0.2.4/`，再 latest 清单到 `/www/wwwroot/xiaozs/sah/components/paldee-pet/`。不上传 catalog-entry.json 或未签名清单，不修改 catalog.json 或 Cua 文件。旧 0.2.3 保留。
++
++最终 ZIP 13 项真实验收通过：诊断工具在中文及空格路径运行、只读配置、入口/许可证/架构/元数据/哈希、重复和并发启动、正常停止、异常退出、显示/隐藏、超时及卸载后用户数据保留。旧笔记本透明宠物不显示的根因仍待该电脑诊断，不宣称本版修复了此问题。
++
++用户更新组件后，在组件版本目录双击 `diagnose-pet-windows.cmd`，复制输出即可继续排查。不自动上传、推送或发布。
+diff --git a/docs/PALDEE_PET_0.2.5_RELEASE.md b/docs/PALDEE_PET_0.2.5_RELEASE.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..642eedd12e3436c5168d42a3b6a520eb1191c3cd
+--- /dev/null
++++ b/docs/PALDEE_PET_0.2.5_RELEASE.md
+@@ -0,0 +1,45 @@
++# Paldee Pet 0.2.5 Windows x64 组件交付
++
++记录日期：2026-10-23。组件 ID 保持 `octoppet`，入口为 `paldee-pet.exe`，运行协议为 `octoppet-component@1`。旧 0.2.4 内容保持不变。
++
++## 本版内容
++
++- 内置 Peek/Type 替换为固定主体的太极机器人；清除 Type 下巴青色痕迹及手放下后残留的轮廓。
++- 移除独立 Taiji 第三选项；旧配置自动按 Peek 使用，保留其他设置。
++- 电脑背面采用用户确认的白色 Logo；应用图标收紧透明留白，托盘模板同步替换。
++- 聊天空白页采用用户提供的矢量 Logo，10% 不透明度；聊天菜单和输入提示改为“小助手”。
++- 保留现有桥接、组件运行协议和随包只读 Windows 诊断工具。
++- 包含源码修改清单、精确上游基线及素材重建入口；Mac 共用源码与图标素材，实际 Mac 构建和验收单独进行。
++
++状态表情历史：聊天活动驱动表情曾在 `ce506b6` 增加、在 `7979d4f` 撤回，早于本轮修改。本版没有恢复自动状态表情，不能把旧八状态素材目录当作已启用的功能。
++
++## 本地交付与上传边界
++
++组件 ZIP、未签名清单与测试报告在 `build/component-release/paldee-pet/` 生成。正式下载清单需由既有产品签名工具签名，并使用小助手信任的公钥验签；不创建或复制私钥，不改全局 `catalog.json`。
++
++本次仅生成本地 Windows x64 包并推送源码，不上传服务器，不推送发行 tag，不触发 Mac 发布。上传时先放置 `0.2.5/paldee-pet-0.2.5-windows-x64.zip`，核对大小与 SHA-256，再放置已签名的 `latest-windows-x64.json`。普通升级不需要覆盖全局目录或 Cua 文件。
++
++## 已完成的交付验证
++
++- Windows release 程序、随包桥接程序和组件 ZIP 均已本地构建，桥接源码提交为 `21d3b0d0b6bddd35ba260128f36be362c5f1cd26`。
++- 实际 ZIP 的 13 项独立目录验收全部通过；无失败、错误或跳过。
++- 下载清单已用既有产品签名工具签名，并通过小助手内置信任公钥验签；不创建或复制私钥。
++- 未上传服务器，未修改全局目录，未发布 Mac 包。Mac 组件支持的远端提交 `527ed863c83633d03ae6a9c0d8e9da72b132372c` 已合入本地源码。
++
++## 可上传的两个文件
++
++- `D:\ai\xiaozs.com\xiaozs\sah\components\paldee-pet\0.2.5\paldee-pet-0.2.5-windows-x64.zip`：18,630,537 字节；SHA-256 `4afe4854afc9422097d4fe53e13d8c9c2c2591067511679d1d827af5ca5e584b`。
++- `D:\ai\xiaozs.com\xiaozs\sah\components\paldee-pet\latest-windows-x64.json`：637 字节；SHA-256 `8f8c70f8b63e1a920c6f556bb2a200b7436576fd06049f6433c85df6547d1b88`。
++
++签名核验报告：`D:/ai/xiaozs.com/component-release-staging/paldee-pet-0.2.5/signing-verification.json`。构建目录中的 `latest-windows-x64.unsigned.json` 仅留档，不上传；`catalog-entry.json` 不属于普通版本更新上传文件。
++
++## Mac 上拉取和编译
++
++先在自己的源码目录 `git pull --ff-only`，再安装依赖并执行：
++
++```bash
++npm ci
++bash scripts/build_pd_component_macos.sh /实际路径/screen-automation-device-bridge
++```
++
++脚本默认构建当前 Mac 的架构；本地尚未执行本版 Mac 编译与实机验收。GitHub 的组件发布工作流仅手动触发，本次不触发它。

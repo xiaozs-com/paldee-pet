@@ -227,7 +227,7 @@ export default function Composer({
         rows={1}
         value={text}
         disabled={disabled}
-        placeholder={disabled ? "连接后即可发送" : "和 Octop 说点什么"}
+        placeholder={disabled ? "连接后即可发送" : "和小助手说点什么"}
         onChange={(event) => setText(event.currentTarget.value)}
         onCompositionStart={() => {
           composingRef.current = true;

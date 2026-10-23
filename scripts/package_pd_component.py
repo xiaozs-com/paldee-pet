@@ -137,8 +137,9 @@ def validate_archive(archive, manifest, catalog):
             raise ValueError("Component metadata mismatch")
         if "signature" in catalog or "components" in catalog:
             raise ValueError("Only an unsigned single-component catalog entry is allowed")
-        if not {"LICENSE", ENTRY, "pd-device-bridge.exe"}.issubset(bundle.namelist()):
-            raise ValueError("Entry, bridge or license missing")
+        if not {"LICENSE", ENTRY, "pd-device-bridge.exe", "diagnose-pet-windows.ps1",
+                "diagnose-pet-windows.cmd"}.issubset(bundle.namelist()):
+            raise ValueError("Entry, bridge, license or diagnostics missing")
         with tempfile.TemporaryDirectory(prefix="octoppet-zip-check-") as temporary:
             bundle.extractall(temporary)
             for name in [ENTRY, "pd-device-bridge.exe"]:
@@ -184,6 +185,8 @@ def package(args):
         shutil.copy2(args.pet, staging / ENTRY)
         shutil.copy2(args.bridge, staging / "pd-device-bridge.exe")
         shutil.copy2(ROOT / "LICENSE", staging / "LICENSE")
+        for name in ["diagnose-pet-windows.ps1", "diagnose-pet-windows.cmd"]:
+            shutil.copy2(ROOT / "scripts" / name, staging / name)
         write_json(staging / "component.json", metadata)
         legal = staging / "licenses"
         legal.mkdir()

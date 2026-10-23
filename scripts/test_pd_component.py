@@ -87,8 +87,22 @@ class ComponentAcceptance(unittest.TestCase):
             self.assertIs(metadata["settings"][0]["default"], False)
         with zipfile.ZipFile(self.archive) as bundle:
             for name in bundle.namelist():
-                self.assertTrue(name in ["component.json", "LICENSE", "paldee-pet.exe", "pd-device-bridge.exe"] or
+                self.assertTrue(name in ["component.json", "LICENSE", "paldee-pet.exe", "pd-device-bridge.exe",
+                                         "diagnose-pet-windows.ps1", "diagnose-pet-windows.cmd"] or
                                 name.startswith("licenses/"), name)
+
+    def test_bundled_diagnostics_are_read_only(self):
+        config = self.user_data / "config.json"
+        before = config.read_bytes()
+        result = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                                 "-File", str(self.installation / "diagnose-pet-windows.ps1")],
+                                env=self.env, capture_output=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        # Windows PowerShell's output encoding follows the local console code page.
+        report = json.loads(result.stdout.decode("utf-8", errors="replace"))
+        self.assertEqual(report["petConfig"]["mascotId"], "taiji-bot")
+        self.assertIn("windows", report)
+        self.assertEqual(config.read_bytes(), before)
 
     def test_chinese_space_path_and_repeat_launch(self):
         first = self.invoke("start")
@@ -100,7 +114,8 @@ class ComponentAcceptance(unittest.TestCase):
         self.assertEqual(repeated.returncode, 0, repeated.stderr)
         self.assertEqual(self.invoke("status")["pid"], first["pid"])
         self.assertEqual({p.name for p in self.installation.iterdir()},
-                         {"component.json", "LICENSE", "paldee-pet.exe", "pd-device-bridge.exe", "licenses"})
+                         {"component.json", "LICENSE", "paldee-pet.exe", "pd-device-bridge.exe", "licenses",
+                          "diagnose-pet-windows.ps1", "diagnose-pet-windows.cmd"})
 
     def test_concurrent_start_has_one_owner(self):
         # Repeat cold starts to cover both contenders winning the ownership race.
