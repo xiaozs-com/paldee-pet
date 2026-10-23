@@ -52,7 +52,7 @@ jobs:
           - platform: macos-x86_64
             rust_target: x86_64-apple-darwin
           - platform: macos-arm64
-            rust_target: arm64-apple-darwin
+            rust_target: aarch64-apple-darwin
     # Skip the unused arch when the caller picked a single target.
     # (GitHub expressions can't filter a matrix directly, so we gate the steps.)
     outputs:

@@ -30,7 +30,7 @@ if [[ -z "$arch" ]]; then
 fi
 case "$arch" in
   x86_64) target="x86_64-apple-darwin" ;;
-  arm64)  target="arm64-apple-darwin"  ;;
+  arm64)  target="aarch64-apple-darwin" ;;
   *) echo "unsupported arch: $arch (use x86_64 or arm64)" >&2; exit 2 ;;
 esac
 
