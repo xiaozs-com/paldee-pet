@@ -10,7 +10,7 @@
 | 已核对的原项目基线        | `4ed0711cbd19d29341656317cb4e526bd59789d1`，包版本 `0.2.0`；未确认发行 tag                 |
 | 自有仓库                  | `xiaozs-com/paldee-pet`                                                                    |
 | 本轮开始及清单建立时 HEAD | `582a6d3fbcbdea39be74d99ef60e69aa70655716`，已提交版本 `0.2.3`                             |
-| 当前工作区版本            | `0.2.5`，当前正在完成 Windows 组件构建与提交；不代表已上传                                 |
+| 当前工作区版本            | `0.2.6`，当前正在完成 Windows 组件构建与提交；不代表已上传                                 |
 | 精确来源记录              | [SOURCE_BASELINES.md](SOURCE_BASELINES.md)、[source-baselines.json](source-baselines.json) |
 
 上游身份与基线取自此前已核对的来源记录，本次没有重新联网核对。本地为浅克隆，已于 2026-10-23 取回上述上游提交对象进行核对；以下是按当前源码、提交记录和本轮工作区核实的定制维护清单，其中表格是维护摘要；逐行差异可使用下文固定基线比较命令查看。`git diff HEAD` 也只覆盖当前未提交修改，不能代表全部历史定制。
@@ -68,6 +68,17 @@
 - 已对照原上游 `4ed0711`：原版仅手选 Peek/Type；当前 `PetWindow.tsx`、`MascotImage.tsx`、`configLogic.ts` 与该基线一致。聊天控制器继续保留原功能，并增加桥接接线；没有为恢复原版而删除本地兼容修复。
 
 ## 三、macOS 同步范围与验收状态
+
+### W16：托盘检查更新（0.2.6；不覆盖 0.2.5）
+
+- 原项目 `tray.rs::check_for_updates` 仅显示版本与“暂未接入自动更新”。现修改 `src-tauri/src/tray.rs`，异步调用 `src-tauri/src/pd_bridge_cmd.rs` 的固定组件更新请求，不阻塞菜单/UI。
+- 复用 Device Bridge 传输，固定请求为 `cli components check-update octoppet`。聊天窗口的 CLI 调用权限检查保留，不开放通用托盘执行入口。
+- 小助手另在 `runtime/cli.py` 增加只读命令，直接调用原“功能组件 → 检查更新”的 `components.operations.check_catalog_component_update`，复用清单验签和已安装版本比较；原有 Android 连接器命令保留。
+- Pet 显示更新结果或实际错误；不会自行下载、安装、停止或替换当前程序。安装更新仍由小助手功能组件页面处理。旧主程序缺少 CLI 入口时明确报错，不假装已完成检查。
+- Pet 接线进入 0.2.6 组件；小助手 CLI 源码提交为 `ed961c7e9c5dd49de86ef4e9003aae603bb66753`。用户本次仅要求 Pet 打包、推送两端源码，不生成小助手主程序安装包，主程序仍需后续构建才能提供新命令。本次不覆盖不可变 0.2.5 ZIP。Mac 共用相同 Rust/CLI 接线，实机未验收。
+- Agent Skill `D:/ai/screen-automation/skills/screen-automation/SKILL.md` 已审阅，无需改动；此项为本机产品更新入口，不改变 Agent 工作流执行契约。
+- 小助手修改仅 `runtime/cli.py` 与新增 `tests/test_component_update_cli.py`；其余工作区修改保留，未混入本轮功能。
+- 验证：Pet 的 Windows 全套检查通过（137 项前端、31 项 Rust 测试）；小助手更新 CLI 与组件回归测试 30 项通过、4 项原有跳过。未将源码测试称为已安装程序的联网或 Mac 实机验收。
 
 | 范围                                                    | 源码 / 素材状态                                        | 验收边界                                                                 |
 | ------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------ |

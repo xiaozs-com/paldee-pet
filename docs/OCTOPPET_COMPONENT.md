@@ -1,4 +1,4 @@
-> 当前 Windows 本地组件交付为 [0.2.5](PALDEE_PET_0.2.5_RELEASE.md)，含新形象/图标和只读诊断工具；以下较早版本示例仅说明协议与实现历史。源码 origin 为 https://github.com/xiaozs-com/paldee-pet.git。
+> 当前 Windows 本地组件交付见 [0.2.6](PALDEE_PET_0.2.6_RELEASE.md)，含托盘更新服务接线；0.2.5 新形象/图标和只读诊断工具继续保留；以下较早版本示例仅说明协议与实现历史。源码 origin 为 https://github.com/xiaozs-com/paldee-pet.git。
 
 # Paldee Pet：PD 小助手独立可选组件
 

@@ -13,15 +13,15 @@
 | 当前 fork 共同祖先             | `4ed0711cbd19d29341656317cb4e526bd59789d1`             |
 | 该上游提交的 package.json 版本 | `0.2.0`；未确认发行 tag，不能写成已验证的 `v0.2.0` tag |
 | 自有 fork / origin             | https://github.com/xiaozs-com/paldee-pet.git           |
-| 本次记录的 fork HEAD           | `527ed863c83633d03ae6a9c0d8e9da72b132372c`             |
-| 该 HEAD 已提交的程序版本       | `0.2.3`                                                |
-| 当前工作区版本                 | `0.2.5`，存在其他未提交开发改动；不代表已经提交或发布  |
+| 本次记录的 fork HEAD           | `185833a104a03bbc87fb485b467c55fd97115989`             |
+| 该 HEAD 已提交的程序版本       | `0.2.5`                                                |
+| 当前工作区版本                 | `0.2.6`，存在其他未提交开发改动；不代表已经提交或发布  |
 | 本地历史                       | 浅克隆，尚未配置 upstream remote                       |
 
 取证：GitHub 仓库元数据确认 parent/source 均为 `jubaoliang/OctopPet`；使用固定完整提交比较确认共同祖先，并读取该提交的 package.json。不能只凭 GitHub 上某提交可访问，就认定它在原作者分支中：fork 网络也可能共享提交对象。
 
 - [上游固定源码](https://github.com/jubaoliang/OctopPet/tree/4ed0711cbd19d29341656317cb4e526bd59789d1)
-- [固定提交比较](https://github.com/jubaoliang/OctopPet/compare/4ed0711cbd19d29341656317cb4e526bd59789d1...xiaozs-com:527ed863c83633d03ae6a9c0d8e9da72b132372c)
+- [固定提交比较](https://github.com/jubaoliang/OctopPet/compare/4ed0711cbd19d29341656317cb4e526bd59789d1...xiaozs-com:185833a104a03bbc87fb485b467c55fd97115989)
 
 本地浅历史起点 `e0ded53e8f36f309e2b2105ef163824886e0da6a` 已包含自有修复，不应继续当作原作者的精确基线。组件快照的 `53b675dd424a372accfb1ea98ddcadbce9ab1813` 是本地组件补丁导出基线，也不是官方上游版本。
 

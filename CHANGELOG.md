@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Connect the tray update check to the Helper optional-component update service through Device Bridge; requires the Helper `cli components check-update` entry point.
+
 - Cover the complete hand outlines in typing frames so raised-hand lines do not remain on the face.
 
 - Kept the component host alive when startup and status clients overlap by allowing the named-pipe default instance limit.

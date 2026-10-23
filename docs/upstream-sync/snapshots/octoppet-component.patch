@@ -9,11 +9,11 @@ index dce055b9974c456ce4eec44abc1da5f2a08612ef..d3c782dae31ea5c7fc19e4fe952f2a5c
 +build/component-release/
 diff --git a/docs/OCTOPPET_COMPONENT.md b/docs/OCTOPPET_COMPONENT.md
 new file mode 100644
-index 0000000000000000000000000000000000000000..576eacac4ef964d82d23929824a1a112212458b0
+index 0000000000000000000000000000000000000000..eec595a1199844b483e0d8168a4bcded86f8bb83
 --- /dev/null
 +++ b/docs/OCTOPPET_COMPONENT.md
 @@ -0,0 +1,159 @@
-+> 当前 Windows 本地组件交付为 [0.2.5](PALDEE_PET_0.2.5_RELEASE.md)，含新形象/图标和只读诊断工具；以下较早版本示例仅说明协议与实现历史。源码 origin 为 https://github.com/xiaozs-com/paldee-pet.git。
++> 当前 Windows 本地组件交付见 [0.2.6](PALDEE_PET_0.2.6_RELEASE.md)，含托盘更新服务接线；0.2.5 新形象/图标和只读诊断工具继续保留；以下较早版本示例仅说明协议与实现历史。源码 origin 为 https://github.com/xiaozs-com/paldee-pet.git。
 +
 +# Paldee Pet：PD 小助手独立可选组件
 +
@@ -229,6 +229,78 @@ index 0000000000000000000000000000000000000000..e4d1b4328b1bc78ec4ce60805e551e61
 +- Windows 命名管道权限：[Microsoft](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipe-security-and-access-rights)。
 +- 子进程句柄继承：[Microsoft](https://learn.microsoft.com/en-us/windows/win32/procthread/inheritance)。
 +- 第三方源及下载指纹在 packaging/third-party-licenses/SOURCES.json，ZIP 内保留完整许可文本与源码下载地址。
+diff --git a/docs/PALDEE_PET_0.2.4_RELEASE.md b/docs/PALDEE_PET_0.2.4_RELEASE.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..f59be25ba097794057fd6fb151c69edfddb13b72
+--- /dev/null
++++ b/docs/PALDEE_PET_0.2.4_RELEASE.md
+@@ -0,0 +1,15 @@
++# Paldee Pet 0.2.4 Windows x64 交付
++
++2026-10-14。本版在原功能组件格式中加入只读诊断脚本与双击入口，不修改小助手主程序、服务器桥接或全局目录，不包含 Windows x86。
++
++新增 `diagnose-pet-windows.ps1`、`diagnose-pet-windows.cmd`；打包器复制二者并验证存在，组件验收白名单同步更新。诊断输出系统、显卡、Pet 进程/窗口位置与宠物布局配置，不读取密码或聊天内容，不上传，不修改配置。兼容 Windows PowerShell 5.1；读取独立用户数据目录，支持 OCTOPPET_DATA_DIR 隔离。
++
++正式 ZIP：`D:/ai/xiaozs.com/xiaozs/sah/components/paldee-pet/0.2.4/paldee-pet-0.2.4-windows-x64.zip`，15,428,493 字节，SHA-256 `4473d326469db57e84f36b34fbd9b4aca09f60d80d38605b77cbba924dcab449`。
++
++签名清单：`D:/ai/xiaozs.com/xiaozs/sah/components/paldee-pet/latest-windows-x64.json`，637 字节，SHA-256 `5da57d35b3073c4e2039d3e11efa2e7537f6c84d66559ecd76327b5fc1f075f5`。使用既有产品密钥，公钥验签通过；未创建或复制私钥。未签名清单保存在组件构建目录，签名验证报告保存在 `D:/ai/xiaozs.com/component-release-staging/paldee-pet-0.2.4/signing-verification.json`。
++
++上传顺序：先 ZIP 到 `/www/wwwroot/xiaozs/sah/components/paldee-pet/0.2.4/`，再 latest 清单到 `/www/wwwroot/xiaozs/sah/components/paldee-pet/`。不上传 catalog-entry.json 或未签名清单，不修改 catalog.json 或 Cua 文件。旧 0.2.3 保留。
++
++最终 ZIP 13 项真实验收通过：诊断工具在中文及空格路径运行、只读配置、入口/许可证/架构/元数据/哈希、重复和并发启动、正常停止、异常退出、显示/隐藏、超时及卸载后用户数据保留。旧笔记本透明宠物不显示的根因仍待该电脑诊断，不宣称本版修复了此问题。
++
++用户更新组件后，在组件版本目录双击 `diagnose-pet-windows.cmd`，复制输出即可继续排查。不自动上传、推送或发布。
+diff --git a/docs/PALDEE_PET_0.2.5_RELEASE.md b/docs/PALDEE_PET_0.2.5_RELEASE.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..642eedd12e3436c5168d42a3b6a520eb1191c3cd
+--- /dev/null
++++ b/docs/PALDEE_PET_0.2.5_RELEASE.md
+@@ -0,0 +1,45 @@
++# Paldee Pet 0.2.5 Windows x64 组件交付
++
++记录日期：2026-10-23。组件 ID 保持 `octoppet`，入口为 `paldee-pet.exe`，运行协议为 `octoppet-component@1`。旧 0.2.4 内容保持不变。
++
++## 本版内容
++
++- 内置 Peek/Type 替换为固定主体的太极机器人；清除 Type 下巴青色痕迹及手放下后残留的轮廓。
++- 移除独立 Taiji 第三选项；旧配置自动按 Peek 使用，保留其他设置。
++- 电脑背面采用用户确认的白色 Logo；应用图标收紧透明留白，托盘模板同步替换。
++- 聊天空白页采用用户提供的矢量 Logo，10% 不透明度；聊天菜单和输入提示改为“小助手”。
++- 保留现有桥接、组件运行协议和随包只读 Windows 诊断工具。
++- 包含源码修改清单、精确上游基线及素材重建入口；Mac 共用源码与图标素材，实际 Mac 构建和验收单独进行。
++
++状态表情历史：聊天活动驱动表情曾在 `ce506b6` 增加、在 `7979d4f` 撤回，早于本轮修改。本版没有恢复自动状态表情，不能把旧八状态素材目录当作已启用的功能。
++
++## 本地交付与上传边界
++
++组件 ZIP、未签名清单与测试报告在 `build/component-release/paldee-pet/` 生成。正式下载清单需由既有产品签名工具签名，并使用小助手信任的公钥验签；不创建或复制私钥，不改全局 `catalog.json`。
++
++本次仅生成本地 Windows x64 包并推送源码，不上传服务器，不推送发行 tag，不触发 Mac 发布。上传时先放置 `0.2.5/paldee-pet-0.2.5-windows-x64.zip`，核对大小与 SHA-256，再放置已签名的 `latest-windows-x64.json`。普通升级不需要覆盖全局目录或 Cua 文件。
++
++## 已完成的交付验证
++
++- Windows release 程序、随包桥接程序和组件 ZIP 均已本地构建，桥接源码提交为 `21d3b0d0b6bddd35ba260128f36be362c5f1cd26`。
++- 实际 ZIP 的 13 项独立目录验收全部通过；无失败、错误或跳过。
++- 下载清单已用既有产品签名工具签名，并通过小助手内置信任公钥验签；不创建或复制私钥。
++- 未上传服务器，未修改全局目录，未发布 Mac 包。Mac 组件支持的远端提交 `527ed863c83633d03ae6a9c0d8e9da72b132372c` 已合入本地源码。
++
++## 可上传的两个文件
++
++- `D:\ai\xiaozs.com\xiaozs\sah\components\paldee-pet\0.2.5\paldee-pet-0.2.5-windows-x64.zip`：18,630,537 字节；SHA-256 `4afe4854afc9422097d4fe53e13d8c9c2c2591067511679d1d827af5ca5e584b`。
++- `D:\ai\xiaozs.com\xiaozs\sah\components\paldee-pet\latest-windows-x64.json`：637 字节；SHA-256 `8f8c70f8b63e1a920c6f556bb2a200b7436576fd06049f6433c85df6547d1b88`。
++
++签名核验报告：`D:/ai/xiaozs.com/component-release-staging/paldee-pet-0.2.5/signing-verification.json`。构建目录中的 `latest-windows-x64.unsigned.json` 仅留档，不上传；`catalog-entry.json` 不属于普通版本更新上传文件。
++
++## Mac 上拉取和编译
++
++先在自己的源码目录 `git pull --ff-only`，再安装依赖并执行：
++
++```bash
++npm ci
++bash scripts/build_pd_component_macos.sh /实际路径/screen-automation-device-bridge
++```
++
++脚本默认构建当前 Mac 的架构；本地尚未执行本版 Mac 编译与实机验收。GitHub 的组件发布工作流仅手动触发，本次不触发它。
 diff --git a/docs/PALDEE_PET_COMPONENT_ACCEPTANCE.md b/docs/PALDEE_PET_COMPONENT_ACCEPTANCE.md
 new file mode 100644
 index 0000000000000000000000000000000000000000..83f4b9a0032ffa35e512b213918679a69b73df5c
@@ -441,7 +513,7 @@ index 0000000000000000000000000000000000000000..51ae99d16e2da68702920f3bb4eeaff7
 +
 +2026-10-10 项目包名改为 paldee-pet，Rust 库名 paldee_pet_lib，原生构建入口 paldee-pet.exe；同步上游后检查 package/lock、Cargo/lock、main.rs、command_logic.rs 与 build_pd_component.ps1 的名字接线。上游 OctopPet 版权来源、内部 octoppet 组件 ID、com.octop.pet 用户数据及协议标识保留。历史补丁与已发布 ZIP 不重写。
 diff --git a/package-lock.json b/package-lock.json
-index 0e1ef1b9b6a594fbbfa55c0dc4d5fdb13ef5467f..c443ceb224c7aedb38bf47f34c2b7e7a6ad5c7ad 100644
+index 0e1ef1b9b6a594fbbfa55c0dc4d5fdb13ef5467f..cf88f93a25410c7b637c38c0ef0ce6c2c06f46bb 100644
 --- a/package-lock.json
 +++ b/package-lock.json
 @@ -1,12 +1,12 @@
@@ -449,7 +521,7 @@ index 0e1ef1b9b6a594fbbfa55c0dc4d5fdb13ef5467f..c443ceb224c7aedb38bf47f34c2b7e7a
 -  "name": "octop-pet",
 -  "version": "0.2.0",
 +  "name": "paldee-pet",
-+  "version": "0.2.5",
++  "version": "0.2.6",
    "lockfileVersion": 3,
    "requires": true,
    "packages": {
@@ -457,12 +529,12 @@ index 0e1ef1b9b6a594fbbfa55c0dc4d5fdb13ef5467f..c443ceb224c7aedb38bf47f34c2b7e7a
 -      "name": "octop-pet",
 -      "version": "0.2.0",
 +      "name": "paldee-pet",
-+      "version": "0.2.5",
++      "version": "0.2.6",
        "dependencies": {
          "@tauri-apps/api": "^2",
          "@tauri-apps/plugin-http": "^2.5.9",
 diff --git a/package.json b/package.json
-index 10f7eacb28e246ef3c71221d3b79e451572ca7da..636c5d6e75599b5b6f74c7c7bdf4937807a00e05 100644
+index 10f7eacb28e246ef3c71221d3b79e451572ca7da..41ef1ac5c19cdddcd127a586a887f6f0d4387e34 100644
 --- a/package.json
 +++ b/package.json
 @@ -1,7 +1,7 @@
@@ -471,7 +543,7 @@ index 10f7eacb28e246ef3c71221d3b79e451572ca7da..636c5d6e75599b5b6f74c7c7bdf49378
 +  "name": "paldee-pet",
    "private": true,
 -  "version": "0.2.0",
-+  "version": "0.2.5",
++  "version": "0.2.6",
    "type": "module",
    "scripts": {
      "dev": "vite",
@@ -1682,9 +1754,73 @@ index 0000000000000000000000000000000000000000..bb355dea7a37398630d9fee98a4e71a9
 +  arguments+=(--output "$output")
 +fi
 +python3 "${arguments[@]}"
+diff --git a/scripts/diagnose-pet-windows.cmd b/scripts/diagnose-pet-windows.cmd
+new file mode 100644
+index 0000000000000000000000000000000000000000..eb703cf80db35c43355dc3dc81ee7e0a1474eaaa
+--- /dev/null
++++ b/scripts/diagnose-pet-windows.cmd
+@@ -0,0 +1,3 @@
++@echo off
++powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0diagnose-pet-windows.ps1"
++pause
+diff --git a/scripts/diagnose-pet-windows.ps1 b/scripts/diagnose-pet-windows.ps1
+new file mode 100644
+index 0000000000000000000000000000000000000000..b002b7c41367a9e07c8e63a178cff063bd4f45c5
+--- /dev/null
++++ b/scripts/diagnose-pet-windows.ps1
+@@ -0,0 +1,49 @@
++# Read-only diagnostics for an installed Pet. Does not read credentials or chat history.
++$ErrorActionPreference = 'Stop'
++Add-Type -TypeDefinition @'
++using System;
++using System.Collections.Generic;
++using System.Runtime.InteropServices;
++public class PaldeeWindowDiagnostics {
++  public delegate bool Callback(IntPtr hwnd, IntPtr data);
++  [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
++  public class WindowInfo { public long Handle; public uint ProcessId; public bool Visible; public Rect Bounds; }
++  [DllImport("user32.dll")] static extern bool EnumWindows(Callback callback, IntPtr data);
++  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
++  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
++  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
++  public static WindowInfo[] Read(uint[] ids) {
++    var found = new List<WindowInfo>();
++    EnumWindows(delegate(IntPtr hwnd, IntPtr data) {
++      uint pid; GetWindowThreadProcessId(hwnd, out pid);
++      if (Array.IndexOf(ids, pid) >= 0) {
++        Rect rect; GetWindowRect(hwnd, out rect);
++        found.Add(new WindowInfo { Handle=hwnd.ToInt64(), ProcessId=pid, Visible=IsWindowVisible(hwnd), Bounds=rect });
++      }
++      return true;
++    }, IntPtr.Zero);
++    return found.ToArray();
++  }
++}
++'@
++Add-Type -AssemblyName System.Windows.Forms
++$petProcesses = @(Get-Process -Name 'paldee-pet','octop-pet' -ErrorAction SilentlyContinue)
++$systemInfo = Get-CimInstance Win32_OperatingSystem
++$dataDirectory = if ($env:OCTOPPET_DATA_DIR) { $env:OCTOPPET_DATA_DIR } else { Join-Path $env:APPDATA 'com.octop.pet' }
++$configFile = Join-Path $dataDirectory 'config.json'
++$petConfig = $null
++if (Test-Path -LiteralPath $configFile) {
++    $config = Get-Content -LiteralPath $configFile -Raw -Encoding UTF8 | ConvertFrom-Json
++    $petConfig = $config | Select-Object mascotId,petSize,petX,petY
++}
++[ordered]@{
++    system = $systemInfo.Caption
++    build = $systemInfo.BuildNumber
++    graphics = @(Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion)
++    processes = @($petProcesses | Select-Object Id,ProcessName)
++    screens = @([System.Windows.Forms.Screen]::AllScreens | ForEach-Object {
++        @{ primary=$_.Primary; left=$_.Bounds.Left; top=$_.Bounds.Top; width=$_.Bounds.Width; height=$_.Bounds.Height }
++    })
++    windows = @([PaldeeWindowDiagnostics]::Read([System.UInt32[]]@($petProcesses | ForEach-Object { $_.Id })))
++    petConfig = $petConfig
++} | ConvertTo-Json -Depth 6
 diff --git a/scripts/export_pd_component_patch.py b/scripts/export_pd_component_patch.py
 new file mode 100644
-index 0000000000000000000000000000000000000000..87e8a79ffe0ee1334db089e2ecd3f7decb9eb262
+index 0000000000000000000000000000000000000000..f5e96105a552b941a22dcea7524d3223d18f9954
 --- /dev/null
 +++ b/scripts/export_pd_component_patch.py
 @@ -0,0 +1,55 @@
@@ -1709,7 +1845,7 @@ index 0000000000000000000000000000000000000000..87e8a79ffe0ee1334db089e2ecd3f7de
 +         "scripts/package_pd_component_macos.py", "scripts/test_pd_component_macos.py",
 +         "scripts/export_pd_component_patch.py", "scripts/diagnose-pet-windows.ps1", "scripts/diagnose-pet-windows.cmd",
 +         "docs/OCTOPPET_COMPONENT.md", "docs/OCTOPPET_COMPONENT_ACCEPTANCE.md", "docs/PALDEE_PET_0.2.4_RELEASE.md",
-+         "docs/PALDEE_PET_0.2.5_RELEASE.md"]
++         "docs/PALDEE_PET_0.2.5_RELEASE.md", "docs/PALDEE_PET_0.2.6_RELEASE.md"]
 +
 +def git(*args, data=None):
 +    return subprocess.check_output(["git", "-c", "core.safecrlf=false", *args],
@@ -2958,7 +3094,7 @@ index 0000000000000000000000000000000000000000..7bfb1bb676d0676c8286c951e844b06a
 +if __name__ == "__main__":
 +    main()
 diff --git a/src-tauri/Cargo.lock b/src-tauri/Cargo.lock
-index f0bc3616687abea17f1564f9c63763296bbea9be..182409b1ee95c55f6ec68cca6ab1b6e99143ef1b 100644
+index f0bc3616687abea17f1564f9c63763296bbea9be..cea6cf7b344a83241c35f853f35990fb3342a549 100644
 --- a/src-tauri/Cargo.lock
 +++ b/src-tauri/Cargo.lock
 @@ -2651,25 +2651,6 @@ dependencies = [
@@ -2993,7 +3129,7 @@ index f0bc3616687abea17f1564f9c63763296bbea9be..182409b1ee95c55f6ec68cca6ab1b6e9
  
 +[[package]]
 +name = "paldee-pet"
-+version = "0.2.5"
++version = "0.2.6"
 +dependencies = [
 + "keyring",
 + "objc2",
@@ -3016,7 +3152,7 @@ index f0bc3616687abea17f1564f9c63763296bbea9be..182409b1ee95c55f6ec68cca6ab1b6e9
  name = "pango"
  version = "0.18.3"
 diff --git a/src-tauri/Cargo.toml b/src-tauri/Cargo.toml
-index 717588fac203691fe3497400898e876ee656d68f..a7c4ec6f7f2a855bb8ff7a9c3614109b4ab93491 100644
+index 717588fac203691fe3497400898e876ee656d68f..1d1a9991d87999d3327e5f9624f39c1ba36a2d6c 100644
 --- a/src-tauri/Cargo.toml
 +++ b/src-tauri/Cargo.toml
 @@ -1,6 +1,6 @@
@@ -3024,7 +3160,7 @@ index 717588fac203691fe3497400898e876ee656d68f..a7c4ec6f7f2a855bb8ff7a9c3614109b
 -name = "octop-pet"
 -version = "0.2.0"
 +name = "paldee-pet"
-+version = "0.2.5"
++version = "0.2.6"
  description = "Desktop companion for a remote Octop instance"
  authors = ["you"]
  edition = "2021"
@@ -4499,7 +4635,7 @@ index 880b2d6c8a841904833cc374e5a0b3355b4e693a..b8e9a2d2f7b74b79c766bf9de4b0bbcb
 +    paldee_pet_lib::run()
  }
 diff --git a/src-tauri/src/pd_bridge_cmd.rs b/src-tauri/src/pd_bridge_cmd.rs
-index 1c6bad441c12d0583c4985c44dff97959062faac..bf8c08f81310175508c5c90c87fc36212230dd4f 100644
+index 1c6bad441c12d0583c4985c44dff97959062faac..d3d3cccb1440ad80c6647533f41da266b38343e4 100644
 --- a/src-tauri/src/pd_bridge_cmd.rs
 +++ b/src-tauri/src/pd_bridge_cmd.rs
 @@ -1,13 +1,19 @@
@@ -4562,7 +4698,7 @@ index 1c6bad441c12d0583c4985c44dff97959062faac..bf8c08f81310175508c5c90c87fc3621
      if !path.is_file() {
          return Err("PD 桥接组件入口缺失".into());
      }
-@@ -49,18 +71,37 @@ fn component_entry() -> Result<PathBuf, String> {
+@@ -49,18 +71,41 @@ fn component_entry() -> Result<PathBuf, String> {
  pub async fn pd_execute_cli(
      window: tauri::WebviewWindow,
      args: Vec<String>,
@@ -4572,6 +4708,10 @@ index 1c6bad441c12d0583c4985c44dff97959062faac..bf8c08f81310175508c5c90c87fc3621
 -        return Err("本机查询仅允许从聊天窗口调用".into());
 +        return Err("本机 CLI 仅允许从聊天窗口调用".into());
      }
++    execute_cli(args, input).await
++}
++
++async fn execute_cli(args: Vec<String>, input: Option<Value>) -> Result<Value, String> {
      tauri::async_runtime::spawn_blocking(move || {
          if !valid_cli_args(&args) {
 -            return Err("此请求不属于已启用的小助手 CLI 范围".into());
@@ -4604,7 +4744,7 @@ index 1c6bad441c12d0583c4985c44dff97959062faac..bf8c08f81310175508c5c90c87fc3621
              .stdout(Stdio::piped())
              .stderr(Stdio::null());
          #[cfg(windows)]
-@@ -69,11 +110,15 @@ pub async fn pd_execute_cli(
+@@ -69,11 +114,15 @@ pub async fn pd_execute_cli(
              command.creation_flags(0x08000000);
          }
          let mut child = command.spawn().map_err(|_| "本机桥接组件启动失败")?;
@@ -4621,7 +4761,7 @@ index 1c6bad441c12d0583c4985c44dff97959062faac..bf8c08f81310175508c5c90c87fc3621
                  .read_to_end(&mut bytes)
                  .map(|_| bytes)
          });
-@@ -87,22 +132,25 @@ pub async fn pd_execute_cli(
+@@ -87,22 +136,25 @@ pub async fn pd_execute_cli(
                  _ => {
                      let _ = child.kill();
                      let _ = child.wait();
@@ -4651,7 +4791,121 @@ index 1c6bad441c12d0583c4985c44dff97959062faac..bf8c08f81310175508c5c90c87fc3621
  }
  
  fn valid_version(version: &str) -> bool {
-@@ -126,33 +174,31 @@ mod tests {
+@@ -113,6 +165,113 @@ fn valid_version(version: &str) -> bool {
+             .all(|part| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_digit()))
+ }
+ 
++pub async fn check_pet_component_update() -> Result<String, String> {
++    let args = ["cli", "components", "check-update", "octoppet"]
++        .map(String::from)
++        .to_vec();
++    component_update_message(&execute_cli(args, None).await?)
++}
++
++fn component_update_message(result: &Value) -> Result<String, String> {
++    if result["ok"] != true || result["exit_code"] != 0 {
++        if let Some(error) = result["stdout"]
++            .as_str()
++            .and_then(|text| serde_json::from_str::<Value>(text).ok())
++            .and_then(|payload| payload["error"].as_str().map(String::from))
++        {
++            return Err(error);
++        }
++        return Err(format!(
++            "小助手组件更新检查不可用，请确认主程序已更新且可用。\n{}",
++            result["error"]
++                .as_str()
++                .or(result["stderr"].as_str())
++                .unwrap_or("")
++                .chars()
++                .take(300)
++                .collect::<String>()
++        ));
++    }
++    let payload: Value = serde_json::from_str(result["stdout"].as_str().unwrap_or(""))
++        .map_err(|_| "小助手更新检查返回格式无效".to_string())?;
++    if payload["ok"] != true {
++        return Err(payload["error"]
++            .as_str()
++            .unwrap_or("小助手组件更新检查失败")
++            .into());
++    }
++    let update = &payload["update"];
++    if update["component_id"] != "octoppet" {
++        return Err("小助手更新检查返回的组件不匹配".into());
++    }
++    let latest = update["latest_version"]
++        .as_str()
++        .filter(|s| !s.is_empty())
++        .ok_or("小助手未返回可用版本")?;
++    let current = update["current_version"]
++        .as_str()
++        .ok_or("小助手未返回组件安装状态")?;
++    if current.is_empty() {
++        return Ok(format!(
++            "小助手尚未安装此组件，可用版本 V{latest}。\n请在小助手“功能组件”页面安装 Paldee Pet。"
++        ));
++    }
++    if update["update_available"] == true {
++        Ok(format!("发现新版本 V{latest}（已安装 V{current}）。\n请在小助手“功能组件”页面更新 Paldee Pet。"))
++    } else if update["up_to_date"] == true {
++        Ok(format!(
++            "小助手中已安装的 Paldee Pet V{current} 已是最新版本。"
++        ))
++    } else {
++        Err("小助手未返回有效的版本比较结果".into())
++    }
++}
++
++#[cfg(test)]
++mod component_update_tests {
++    use super::component_update_message;
++    use serde_json::{json, Value};
++
++    fn response(update: Value) -> Value {
++        json!({"ok":true,"exit_code":0,"stdout":json!({"ok":true,"update":update}).to_string()})
++    }
++
++    #[test]
++    fn displays_the_helpers_installed_and_available_versions() {
++        let message = component_update_message(&response(json!({"component_id":"octoppet",
++            "current_version":"0.2.5","latest_version":"0.2.6","update_available":true})))
++        .unwrap();
++        assert!(message.contains("新版本 V0.2.6"));
++        assert!(message.contains("已安装 V0.2.5"));
++    }
++
++    #[test]
++    fn distinguishes_current_from_uninstalled() {
++        let current = component_update_message(&response(json!({"component_id":"octoppet",
++            "current_version":"0.2.5","latest_version":"0.2.5","up_to_date":true})))
++        .unwrap();
++        assert!(current.contains("已是最新版本"));
++        let missing = component_update_message(&response(json!({"component_id":"octoppet",
++            "current_version":"","latest_version":"0.2.5"})))
++        .unwrap();
++        assert!(missing.contains("尚未安装"));
++    }
++
++    #[test]
++    fn rejects_failed_checks_and_mismatched_components() {
++        assert!(component_update_message(
++            &json!({"ok":true,"exit_code":2,"stderr":"unsupported command"})
++        )
++        .is_err());
++        assert!(component_update_message(
++            &json!({"ok":true,"exit_code":1,"stdout":r#"{"ok":false,"error":"清单签名无效"}"#})
++        )
++        .unwrap_err()
++        .contains("签名"));
++        assert!(component_update_message(&response(json!({"component_id":"other"}))).is_err());
++    }
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::valid_version;
+@@ -126,33 +285,31 @@ mod tests {
  }
  
  fn valid_cli_args(args: &[String]) -> bool {
@@ -4767,10 +5021,37 @@ index 48e7cfe9ea44a20b98e537d8c1c1bf1c921fb6fc..19eaef0ffb2c6b18076dafbf18e403f9
      #[cfg(debug_assertions)]
      {
 diff --git a/src-tauri/src/tray.rs b/src-tauri/src/tray.rs
-index 922b044fe56b0dbadd7cf9d9418327026941c449..bc2d6f43869091dd9030213ab70ad355ca52756b 100644
+index 922b044fe56b0dbadd7cf9d9418327026941c449..a3fd90bd12ffc465fe75ebc523156d63289a5eb4 100644
 --- a/src-tauri/src/tray.rs
 +++ b/src-tauri/src/tray.rs
-@@ -175,6 +175,7 @@ pub fn setup(app: &mut App) -> tauri::Result<()> {
+@@ -60,14 +60,18 @@ pub fn open_pet(app: &AppHandle) -> Result<(), String> {
+ }
+ 
+ fn check_for_updates(app: &AppHandle) {
+-    let version = env!("CARGO_PKG_VERSION");
+-    app.dialog()
+-        .message(format!(
+-            "当前版本 V{version}\n暂未接入自动更新，请关注发布渠道获取新版本。"
+-        ))
+-        .title("检查更新")
+-        .kind(MessageDialogKind::Info)
+-        .blocking_show();
++    let app = app.clone();
++    tauri::async_runtime::spawn(async move {
++        let (message, kind) = match crate::pd_bridge_cmd::check_pet_component_update().await {
++            Ok(message) => (message, MessageDialogKind::Info),
++            Err(error) => (error, MessageDialogKind::Error),
++        };
++        app.dialog()
++            .message(message)
++            .title("检查组件更新")
++            .kind(kind)
++            .blocking_show();
++    });
+ }
+ 
+ fn handle_menu_event(app: &AppHandle, id: &str) -> Result<(), String> {
+@@ -175,6 +179,7 @@ pub fn setup(app: &mut App) -> tauri::Result<()> {
      let tray = TrayIconBuilder::new()
          .icon(icon)
          .icon_as_template(true)
@@ -4779,7 +5060,7 @@ index 922b044fe56b0dbadd7cf9d9418327026941c449..bc2d6f43869091dd9030213ab70ad355
          .on_menu_event(|app, event| {
              if let Err(error) = handle_menu_event(app, event.id().as_ref()) {
 diff --git a/src-tauri/tauri.conf.json b/src-tauri/tauri.conf.json
-index 745b91113b62954d99da0b4352f77c15b92adb8c..777699414f1d8aedf7b956099b9a9f963108e6f7 100644
+index 745b91113b62954d99da0b4352f77c15b92adb8c..dd0ae231cfc7e4926f52382089f3cf8fb2968725 100644
 --- a/src-tauri/tauri.conf.json
 +++ b/src-tauri/tauri.conf.json
 @@ -1,7 +1,7 @@
@@ -4788,7 +5069,7 @@ index 745b91113b62954d99da0b4352f77c15b92adb8c..777699414f1d8aedf7b956099b9a9f96
 -  "productName": "OctopPet",
 -  "version": "0.2.0",
 +  "productName": "Paldee Pet",
-+  "version": "0.2.5",
++  "version": "0.2.6",
    "identifier": "com.octop.pet",
    "build": {
      "beforeDevCommand": "npm run dev",
@@ -5169,139 +5450,49 @@ index c5475c732d530e56ad822cad339ca17fa699557b..742be574ffe118167868d3e2718875ac
                </div>
                <div className="settings-row">
                  <span>版本</span>
-diff --git a/scripts/diagnose-pet-windows.ps1 b/scripts/diagnose-pet-windows.ps1
+diff --git a/docs/PALDEE_PET_0.2.6_RELEASE.md b/docs/PALDEE_PET_0.2.6_RELEASE.md
 new file mode 100644
-index 0000000000000000000000000000000000000000..b002b7c41367a9e07c8e63a178cff063bd4f45c5
+index 0000000000000000000000000000000000000000..980ea7bf8d72f04533ef89140a509a83d2207d35
 --- /dev/null
-+++ b/scripts/diagnose-pet-windows.ps1
-@@ -0,0 +1,49 @@
-+# Read-only diagnostics for an installed Pet. Does not read credentials or chat history.
-+$ErrorActionPreference = 'Stop'
-+Add-Type -TypeDefinition @'
-+using System;
-+using System.Collections.Generic;
-+using System.Runtime.InteropServices;
-+public class PaldeeWindowDiagnostics {
-+  public delegate bool Callback(IntPtr hwnd, IntPtr data);
-+  [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
-+  public class WindowInfo { public long Handle; public uint ProcessId; public bool Visible; public Rect Bounds; }
-+  [DllImport("user32.dll")] static extern bool EnumWindows(Callback callback, IntPtr data);
-+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint pid);
-+  [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
-+  [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr hwnd, out Rect rect);
-+  public static WindowInfo[] Read(uint[] ids) {
-+    var found = new List<WindowInfo>();
-+    EnumWindows(delegate(IntPtr hwnd, IntPtr data) {
-+      uint pid; GetWindowThreadProcessId(hwnd, out pid);
-+      if (Array.IndexOf(ids, pid) >= 0) {
-+        Rect rect; GetWindowRect(hwnd, out rect);
-+        found.Add(new WindowInfo { Handle=hwnd.ToInt64(), ProcessId=pid, Visible=IsWindowVisible(hwnd), Bounds=rect });
-+      }
-+      return true;
-+    }, IntPtr.Zero);
-+    return found.ToArray();
-+  }
-+}
-+'@
-+Add-Type -AssemblyName System.Windows.Forms
-+$petProcesses = @(Get-Process -Name 'paldee-pet','octop-pet' -ErrorAction SilentlyContinue)
-+$systemInfo = Get-CimInstance Win32_OperatingSystem
-+$dataDirectory = if ($env:OCTOPPET_DATA_DIR) { $env:OCTOPPET_DATA_DIR } else { Join-Path $env:APPDATA 'com.octop.pet' }
-+$configFile = Join-Path $dataDirectory 'config.json'
-+$petConfig = $null
-+if (Test-Path -LiteralPath $configFile) {
-+    $config = Get-Content -LiteralPath $configFile -Raw -Encoding UTF8 | ConvertFrom-Json
-+    $petConfig = $config | Select-Object mascotId,petSize,petX,petY
-+}
-+[ordered]@{
-+    system = $systemInfo.Caption
-+    build = $systemInfo.BuildNumber
-+    graphics = @(Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion)
-+    processes = @($petProcesses | Select-Object Id,ProcessName)
-+    screens = @([System.Windows.Forms.Screen]::AllScreens | ForEach-Object {
-+        @{ primary=$_.Primary; left=$_.Bounds.Left; top=$_.Bounds.Top; width=$_.Bounds.Width; height=$_.Bounds.Height }
-+    })
-+    windows = @([PaldeeWindowDiagnostics]::Read([System.UInt32[]]@($petProcesses | ForEach-Object { $_.Id })))
-+    petConfig = $petConfig
-+} | ConvertTo-Json -Depth 6
-diff --git a/scripts/diagnose-pet-windows.cmd b/scripts/diagnose-pet-windows.cmd
-new file mode 100644
-index 0000000000000000000000000000000000000000..eb703cf80db35c43355dc3dc81ee7e0a1474eaaa
---- /dev/null
-+++ b/scripts/diagnose-pet-windows.cmd
-@@ -0,0 +1,3 @@
-+@echo off
-+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0diagnose-pet-windows.ps1"
-+pause
-diff --git a/docs/PALDEE_PET_0.2.4_RELEASE.md b/docs/PALDEE_PET_0.2.4_RELEASE.md
-new file mode 100644
-index 0000000000000000000000000000000000000000..f59be25ba097794057fd6fb151c69edfddb13b72
---- /dev/null
-+++ b/docs/PALDEE_PET_0.2.4_RELEASE.md
-@@ -0,0 +1,15 @@
-+# Paldee Pet 0.2.4 Windows x64 交付
++++ b/docs/PALDEE_PET_0.2.6_RELEASE.md
+@@ -0,0 +1,40 @@
++# Paldee Pet 0.2.6 Windows x64 组件交付
 +
-+2026-10-14。本版在原功能组件格式中加入只读诊断脚本与双击入口，不修改小助手主程序、服务器桥接或全局目录，不包含 Windows x86。
++记录日期：2026-10-23。组件 ID `octoppet`、入口 `paldee-pet.exe`、协议 `octoppet-component@1` 保持不变；不覆盖已生成的 0.2.5 包。
 +
-+新增 `diagnose-pet-windows.ps1`、`diagnose-pet-windows.cmd`；打包器复制二者并验证存在，组件验收白名单同步更新。诊断输出系统、显卡、Pet 进程/窗口位置与宠物布局配置，不读取密码或聊天内容，不上传，不修改配置。兼容 Windows PowerShell 5.1；读取独立用户数据目录，支持 OCTOPPET_DATA_DIR 隔离。
++## 本版修改
 +
-+正式 ZIP：`D:/ai/xiaozs.com/xiaozs/sah/components/paldee-pet/0.2.4/paldee-pet-0.2.4-windows-x64.zip`，15,428,493 字节，SHA-256 `4473d326469db57e84f36b34fbd9b4aca09f60d80d38605b77cbba924dcab449`。
++- 托盘“检查更新”由原项目占位弹窗改为经 Device Bridge 调用 `cli components check-update octoppet`。
++- 复用小助手“功能组件 → 检查更新”的同一后端服务，继续执行签名校验与已安装版本比较；显示发现新版本、已经最新、尚未安装或错误原因。
++- 后台执行检查，保留菜单响应；Pet 不自行下载、安装、停止或替换组件。下载安装仍由小助手功能组件页面负责。
++- 原有聊天窗口 CLI 权限限制、聊天功能、显示兼容修复和 0.2.5 形象/图标继续保留。
 +
-+签名清单：`D:/ai/xiaozs.com/xiaozs/sah/components/paldee-pet/latest-windows-x64.json`，637 字节，SHA-256 `5da57d35b3073c4e2039d3e11efa2e7537f6c84d66559ecd76327b5fc1f075f5`。使用既有产品密钥，公钥验签通过；未创建或复制私钥。未签名清单保存在组件构建目录，签名验证报告保存在 `D:/ai/xiaozs.com/component-release-staging/paldee-pet-0.2.4/signing-verification.json`。
++## 两端依赖
 +
-+上传顺序：先 ZIP 到 `/www/wwwroot/xiaozs/sah/components/paldee-pet/0.2.4/`，再 latest 清单到 `/www/wwwroot/xiaozs/sah/components/paldee-pet/`。不上传 catalog-entry.json 或未签名清单，不修改 catalog.json 或 Cua 文件。旧 0.2.3 保留。
++小助手对应源码提交：`ed961c7e9c5dd49de86ef4e9003aae603bb66753`，仅修改 `runtime/cli.py`，新增 `tests/test_component_update_cli.py`。该提交增加只读入口，直接调用 `components.operations.check_catalog_component_update`，未复制更新逻辑，也不改变原有 Android 连接器命令。
 +
-+最终 ZIP 13 项真实验收通过：诊断工具在中文及空格路径运行、只读配置、入口/许可证/架构/元数据/哈希、重复和并发启动、正常停止、异常退出、显示/隐藏、超时及卸载后用户数据保留。旧笔记本透明宠物不显示的根因仍待该电脑诊断，不宣称本版修复了此问题。
++用户选择本次仅构建 Pet 组件，推送两端源码，不构建或发布小助手主程序安装包。因此旧小助手即使安装了 Pet 0.2.6，仍需更新为包含上述提交的主程序构建后，托盘检查更新才能成功。版本号本身不能替代确认该 CLI 入口存在；旧版缺失时显示明确错误。
 +
-+用户更新组件后，在组件版本目录双击 `diagnose-pet-windows.cmd`，复制输出即可继续排查。不自动上传、推送或发布。
-diff --git a/docs/PALDEE_PET_0.2.5_RELEASE.md b/docs/PALDEE_PET_0.2.5_RELEASE.md
-new file mode 100644
-index 0000000000000000000000000000000000000000..642eedd12e3436c5168d42a3b6a520eb1191c3cd
---- /dev/null
-+++ b/docs/PALDEE_PET_0.2.5_RELEASE.md
-@@ -0,0 +1,45 @@
-+# Paldee Pet 0.2.5 Windows x64 组件交付
++Mac 共用 Rust 与小助手 CLI 接线，保留现有 Mac 组件支持；本次未构建或验收 Mac 包。Agent Skill 已审阅，无需改动。
 +
-+记录日期：2026-10-23。组件 ID 保持 `octoppet`，入口为 `paldee-pet.exe`，运行协议为 `octoppet-component@1`。旧 0.2.4 内容保持不变。
++## 构建与交付
 +
-+## 本版内容
-+
-+- 内置 Peek/Type 替换为固定主体的太极机器人；清除 Type 下巴青色痕迹及手放下后残留的轮廓。
-+- 移除独立 Taiji 第三选项；旧配置自动按 Peek 使用，保留其他设置。
-+- 电脑背面采用用户确认的白色 Logo；应用图标收紧透明留白，托盘模板同步替换。
-+- 聊天空白页采用用户提供的矢量 Logo，10% 不透明度；聊天菜单和输入提示改为“小助手”。
-+- 保留现有桥接、组件运行协议和随包只读 Windows 诊断工具。
-+- 包含源码修改清单、精确上游基线及素材重建入口；Mac 共用源码与图标素材，实际 Mac 构建和验收单独进行。
-+
-+状态表情历史：聊天活动驱动表情曾在 `ce506b6` 增加、在 `7979d4f` 撤回，早于本轮修改。本版没有恢复自动状态表情，不能把旧八状态素材目录当作已启用的功能。
-+
-+## 本地交付与上传边界
-+
-+组件 ZIP、未签名清单与测试报告在 `build/component-release/paldee-pet/` 生成。正式下载清单需由既有产品签名工具签名，并使用小助手信任的公钥验签；不创建或复制私钥，不改全局 `catalog.json`。
-+
-+本次仅生成本地 Windows x64 包并推送源码，不上传服务器，不推送发行 tag，不触发 Mac 发布。上传时先放置 `0.2.5/paldee-pet-0.2.5-windows-x64.zip`，核对大小与 SHA-256，再放置已签名的 `latest-windows-x64.json`。普通升级不需要覆盖全局目录或 Cua 文件。
-+
-+## 已完成的交付验证
-+
-+- Windows release 程序、随包桥接程序和组件 ZIP 均已本地构建，桥接源码提交为 `21d3b0d0b6bddd35ba260128f36be362c5f1cd26`。
-+- 实际 ZIP 的 13 项独立目录验收全部通过；无失败、错误或跳过。
-+- 下载清单已用既有产品签名工具签名，并通过小助手内置信任公钥验签；不创建或复制私钥。
-+- 未上传服务器，未修改全局目录，未发布 Mac 包。Mac 组件支持的远端提交 `527ed863c83633d03ae6a9c0d8e9da72b132372c` 已合入本地源码。
-+
-+## 可上传的两个文件
-+
-+- `D:\ai\xiaozs.com\xiaozs\sah\components\paldee-pet\0.2.5\paldee-pet-0.2.5-windows-x64.zip`：18,630,537 字节；SHA-256 `4afe4854afc9422097d4fe53e13d8c9c2c2591067511679d1d827af5ca5e584b`。
-+- `D:\ai\xiaozs.com\xiaozs\sah\components\paldee-pet\latest-windows-x64.json`：637 字节；SHA-256 `8f8c70f8b63e1a920c6f556bb2a200b7436576fd06049f6433c85df6547d1b88`。
-+
-+签名核验报告：`D:/ai/xiaozs.com/component-release-staging/paldee-pet-0.2.5/signing-verification.json`。构建目录中的 `latest-windows-x64.unsigned.json` 仅留档，不上传；`catalog-entry.json` 不属于普通版本更新上传文件。
-+
-+## Mac 上拉取和编译
-+
-+先在自己的源码目录 `git pull --ff-only`，再安装依赖并执行：
-+
-+```bash
-+npm ci
-+bash scripts/build_pd_component_macos.sh /实际路径/screen-automation-device-bridge
++```powershell
++./scripts/build_pd_component.ps1 -BridgeRoot D:/ai/screen-automation-device-bridge
++python scripts/test_pd_component.py --package-root build/component-release/paldee-pet --report build/component-release/paldee-pet/acceptance-0.2.6.json
 +```
 +
-+脚本默认构建当前 Mac 的架构；本地尚未执行本版 Mac 编译与实机验收。GitHub 的组件发布工作流仅手动触发，本次不触发它。
++平台清单由既有小助手产品签名工具签名并验签，不创建或复制私钥。普通更新只交付版本 ZIP 与已签名 `latest-windows-x64.json`，不上传未签名备份或 `catalog-entry.json`，不修改全局 `catalog.json`。
++
++本地打包与源码 push 不代表服务器已更新。上传时先 ZIP、核对大小与哈希，再上传签名清单。本次不触发 Mac 发布工作流，不推发行 tag。
++
++## 验证结果与交付文件
++
++Windows x64 release 编译与 ZIP 组装完成，13 项实际组件验收全部通过，无失败、错误或跳过。小助手 CLI 与组件测试 30 项通过、4 项原有跳过。下载清单通过既有产品公钥验签。桥接源码保持 `21d3b0d0b6bddd35ba260128f36be362c5f1cd26`。
++
++- `D:\ai\xiaozs.com\xiaozs\sah\components\paldee-pet\0.2.6\paldee-pet-0.2.6-windows-x64.zip`：18,644,173 字节；SHA-256 `c8afb46cfacc6a95a5d8e7eea615bfe2835610959224d3d2a9c21cf60ae459aa`。
++- `D:\ai\xiaozs.com\xiaozs\sah\components\paldee-pet\latest-windows-x64.json`：637 字节；SHA-256 `758d42cdddb74e0bdb78041fe44329a7f00a6e2c70a8ed2e5f3ecc0c5e078f6f`。
++
++签名核验报告：`D:/ai/xiaozs.com/component-release-staging/paldee-pet-0.2.6/signing-verification.json`。旧版 ZIP 保留，旧 latest 清单已备份。本次未上传服务器；小助手主程序安装包未构建。
++
++两端源码推送后，Mac 上分别在 Pet 和小助手源码目录执行 `git pull --ff-only`；Pet 组件可继续使用 `scripts/build_pd_component_macos.sh`，主程序构建需包含上述 CLI 提交。

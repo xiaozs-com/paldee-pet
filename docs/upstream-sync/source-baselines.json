@@ -9,14 +9,14 @@
     "upstreamPackageVersion": "0.2.0",
     "upstreamTag": null,
     "forkRepository": "https://github.com/xiaozs-com/paldee-pet",
-    "recordedForkCommit": "527ed863c83633d03ae6a9c0d8e9da72b132372c",
-    "committedPackageVersion": "0.2.3",
-    "workingTreePackageVersion": "0.2.5",
+    "recordedForkCommit": "185833a104a03bbc87fb485b467c55fd97115989",
+    "committedPackageVersion": "0.2.5",
+    "workingTreePackageVersion": "0.2.6",
     "workingTreeHasUncommittedChanges": true,
     "localHistoryIsShallow": true,
     "localUpstreamRemoteConfigured": false,
     "verification": "Previously verified GitHub fork parent/source; exact upstream commit fetched locally on 2026-10-23 and core mascot/chat changes compared",
-    "comparisonUrl": "https://github.com/jubaoliang/OctopPet/compare/4ed0711cbd19d29341656317cb4e526bd59789d1...xiaozs-com:527ed863c83633d03ae6a9c0d8e9da72b132372c",
+    "comparisonUrl": "https://github.com/jubaoliang/OctopPet/compare/4ed0711cbd19d29341656317cb4e526bd59789d1...xiaozs-com:185833a104a03bbc87fb485b467c55fd97115989",
     "upstreamBaselineObjectPresent": true
   },
   "octop": {

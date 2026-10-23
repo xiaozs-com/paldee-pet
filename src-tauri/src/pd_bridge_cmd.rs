@@ -76,6 +76,10 @@ pub async fn pd_execute_cli(
     if window.label() != "chat" {
         return Err("本机 CLI 仅允许从聊天窗口调用".into());
     }
+    execute_cli(args, input).await
+}
+
+async fn execute_cli(args: Vec<String>, input: Option<Value>) -> Result<Value, String> {
     tauri::async_runtime::spawn_blocking(move || {
         if !valid_cli_args(&args) {
             return Err("CLI 参数格式无效".into());
@@ -159,6 +163,113 @@ fn valid_version(version: &str) -> bool {
         && parts
             .iter()
             .all(|part| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_digit()))
+}
+
+pub async fn check_pet_component_update() -> Result<String, String> {
+    let args = ["cli", "components", "check-update", "octoppet"]
+        .map(String::from)
+        .to_vec();
+    component_update_message(&execute_cli(args, None).await?)
+}
+
+fn component_update_message(result: &Value) -> Result<String, String> {
+    if result["ok"] != true || result["exit_code"] != 0 {
+        if let Some(error) = result["stdout"]
+            .as_str()
+            .and_then(|text| serde_json::from_str::<Value>(text).ok())
+            .and_then(|payload| payload["error"].as_str().map(String::from))
+        {
+            return Err(error);
+        }
+        return Err(format!(
+            "小助手组件更新检查不可用，请确认主程序已更新且可用。\n{}",
+            result["error"]
+                .as_str()
+                .or(result["stderr"].as_str())
+                .unwrap_or("")
+                .chars()
+                .take(300)
+                .collect::<String>()
+        ));
+    }
+    let payload: Value = serde_json::from_str(result["stdout"].as_str().unwrap_or(""))
+        .map_err(|_| "小助手更新检查返回格式无效".to_string())?;
+    if payload["ok"] != true {
+        return Err(payload["error"]
+            .as_str()
+            .unwrap_or("小助手组件更新检查失败")
+            .into());
+    }
+    let update = &payload["update"];
+    if update["component_id"] != "octoppet" {
+        return Err("小助手更新检查返回的组件不匹配".into());
+    }
+    let latest = update["latest_version"]
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .ok_or("小助手未返回可用版本")?;
+    let current = update["current_version"]
+        .as_str()
+        .ok_or("小助手未返回组件安装状态")?;
+    if current.is_empty() {
+        return Ok(format!(
+            "小助手尚未安装此组件，可用版本 V{latest}。\n请在小助手“功能组件”页面安装 Paldee Pet。"
+        ));
+    }
+    if update["update_available"] == true {
+        Ok(format!("发现新版本 V{latest}（已安装 V{current}）。\n请在小助手“功能组件”页面更新 Paldee Pet。"))
+    } else if update["up_to_date"] == true {
+        Ok(format!(
+            "小助手中已安装的 Paldee Pet V{current} 已是最新版本。"
+        ))
+    } else {
+        Err("小助手未返回有效的版本比较结果".into())
+    }
+}
+
+#[cfg(test)]
+mod component_update_tests {
+    use super::component_update_message;
+    use serde_json::{json, Value};
+
+    fn response(update: Value) -> Value {
+        json!({"ok":true,"exit_code":0,"stdout":json!({"ok":true,"update":update}).to_string()})
+    }
+
+    #[test]
+    fn displays_the_helpers_installed_and_available_versions() {
+        let message = component_update_message(&response(json!({"component_id":"octoppet",
+            "current_version":"0.2.5","latest_version":"0.2.6","update_available":true})))
+        .unwrap();
+        assert!(message.contains("新版本 V0.2.6"));
+        assert!(message.contains("已安装 V0.2.5"));
+    }
+
+    #[test]
+    fn distinguishes_current_from_uninstalled() {
+        let current = component_update_message(&response(json!({"component_id":"octoppet",
+            "current_version":"0.2.5","latest_version":"0.2.5","up_to_date":true})))
+        .unwrap();
+        assert!(current.contains("已是最新版本"));
+        let missing = component_update_message(&response(json!({"component_id":"octoppet",
+            "current_version":"","latest_version":"0.2.5"})))
+        .unwrap();
+        assert!(missing.contains("尚未安装"));
+    }
+
+    #[test]
+    fn rejects_failed_checks_and_mismatched_components() {
+        assert!(component_update_message(
+            &json!({"ok":true,"exit_code":2,"stderr":"unsupported command"})
+        )
+        .is_err());
+        assert!(component_update_message(
+            &json!({"ok":true,"exit_code":1,"stdout":r#"{"ok":false,"error":"清单签名无效"}"#})
+        )
+        .unwrap_err()
+        .contains("签名"));
+        assert!(component_update_message(&response(json!({"component_id":"other"}))).is_err());
+    }
 }
 
 #[cfg(test)]

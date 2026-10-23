@@ -60,14 +60,18 @@ pub fn open_pet(app: &AppHandle) -> Result<(), String> {
 }
 
 fn check_for_updates(app: &AppHandle) {
-    let version = env!("CARGO_PKG_VERSION");
-    app.dialog()
-        .message(format!(
-            "当前版本 V{version}\n暂未接入自动更新，请关注发布渠道获取新版本。"
-        ))
-        .title("检查更新")
-        .kind(MessageDialogKind::Info)
-        .blocking_show();
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let (message, kind) = match crate::pd_bridge_cmd::check_pet_component_update().await {
+            Ok(message) => (message, MessageDialogKind::Info),
+            Err(error) => (error, MessageDialogKind::Error),
+        };
+        app.dialog()
+            .message(message)
+            .title("检查组件更新")
+            .kind(kind)
+            .blocking_show();
+    });
 }
 
 fn handle_menu_event(app: &AppHandle, id: &str) -> Result<(), String> {

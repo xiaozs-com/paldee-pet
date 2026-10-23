@@ -19,7 +19,7 @@ ADDED = ["src/lib/brand.ts", "docs/upstream-sync/PALDEE_SYNC.md",
          "scripts/package_pd_component_macos.py", "scripts/test_pd_component_macos.py",
          "scripts/export_pd_component_patch.py", "scripts/diagnose-pet-windows.ps1", "scripts/diagnose-pet-windows.cmd",
          "docs/OCTOPPET_COMPONENT.md", "docs/OCTOPPET_COMPONENT_ACCEPTANCE.md", "docs/PALDEE_PET_0.2.4_RELEASE.md",
-         "docs/PALDEE_PET_0.2.5_RELEASE.md"]
+         "docs/PALDEE_PET_0.2.5_RELEASE.md", "docs/PALDEE_PET_0.2.6_RELEASE.md"]
 
 def git(*args, data=None):
     return subprocess.check_output(["git", "-c", "core.safecrlf=false", *args],
