@@ -35,6 +35,14 @@ MACOS_PLATFORMS = {
     "macos-x86_64": 0x01000007,  # CPU_TYPE_X86_64
     "macos-arm64": 0x0100000C,   # CPU_TYPE_ARM64
 }
+# Rust target triple per platform, used to scope cargo metadata's dependency
+# resolution during license collection. The triple must match the build being
+# packaged: with --offline, filtering by a foreign platform fails because that
+# platform's registry index entries are not in the local cargo cache.
+MACOS_RUST_TARGETS = {
+    "macos-x86_64": "x86_64-apple-darwin",
+    "macos-arm64": "aarch64-apple-darwin",
+}
 EXECUTABLE_MODE = 0o755
 # The helper's archive extraction drops the executable bit on nested binaries,
 # so archive permissions are a hint; the caller must restore them after install.
@@ -76,7 +84,7 @@ def macho_dependencies(path):
     return foreign
 
 
-def collect_licenses(destination, bridge_root):
+def collect_licenses(destination, bridge_root, rust_target):
     records, missing, seen = [], [], set()
     legal_root = ROOT / "packaging/third-party-licenses"
     sources = json.loads((legal_root / "SOURCES.json").read_text(encoding="utf-8"))
@@ -127,7 +135,7 @@ def collect_licenses(destination, bridge_root):
             subprocess.check_output(
                 [
                     "cargo", "metadata", "--offline", "--locked", "--format-version", "1",
-                    "--filter-platform", "x86_64-apple-darwin", "--manifest-path", str(manifest),
+                    "--filter-platform", rust_target, "--manifest-path", str(manifest),
                 ],
                 text=True,
             )
@@ -251,7 +259,7 @@ def package(args):
         legal = staging / "licenses"
         legal.mkdir()
         shutil.copy2(args.bridge_root / "LICENSE", legal / "PD_BRIDGE_LICENSE.txt")
-        collect_licenses(legal, args.bridge_root)
+        collect_licenses(legal, args.bridge_root, MACOS_RUST_TARGETS[platform])
         with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as bundle:
             for path in sorted(staging.rglob("*")):
                 if not path.is_file():
