@@ -1,6 +1,7 @@
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import {
-  LogicalPosition,
+  availableMonitors,
+  primaryMonitor,
   LogicalSize,
   PhysicalPosition,
 } from "@tauri-apps/api/window";
@@ -42,17 +43,27 @@ export async function setPetWebviewPosition(
   y: number,
 ): Promise<void> {
   await getPetWebviewWindow()
-    .setPosition(new PhysicalPosition(x, y))
+    .setPosition(new PhysicalPosition(Math.round(x), Math.round(y)))
     .catch((error) => console.error("恢复宠物位置失败", error));
 }
 
-export async function setPetWebviewLogicalPosition(
-  x: number,
-  y: number,
-): Promise<void> {
-  await getPetWebviewWindow()
-    .setPosition(new LogicalPosition(x, y))
-    .catch((error) => console.error("移动宠物位置失败", error));
+export async function getPetDesktop() {
+  const win = getPetWebviewWindow();
+  const [monitors, primary, position, scaleFactor] = await Promise.all([
+    availableMonitors(),
+    primaryMonitor(),
+    win.outerPosition(),
+    win.scaleFactor(),
+  ]);
+  return { monitors, primary, position, scaleFactor };
+}
+
+export async function onPetWebviewScaleChanged(
+  handler: (scaleFactor: number) => void,
+): Promise<() => void> {
+  return getPetWebviewWindow().onScaleChanged(({ payload }) =>
+    handler(payload.scaleFactor),
+  );
 }
 
 export async function setPetWebviewLogicalSize(size: number): Promise<void> {

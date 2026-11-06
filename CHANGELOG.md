@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fix pet dragging and inertia at Windows display scaling (including 125%), recover off-screen positions on startup, and add a window-settings action to reset the mascot to the primary display.
+
 - Connect the tray update check to the Helper optional-component update service through Device Bridge; requires the Helper `cli components check-update` entry point.
 
 - Cover the complete hand outlines in typing frames so raised-hand lines do not remain on the face.

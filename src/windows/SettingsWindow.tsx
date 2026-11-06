@@ -56,7 +56,7 @@ export default function SettingsWindow() {
     DEFAULT_APP_CONFIG.keepWindowsVisible,
   );
   const [notice, setNotice] = useState<Notice>(null);
-  const [busy, setBusy] = useState<"save" | "test" | null>(null);
+  const [busy, setBusy] = useState<"save" | "test" | "reset" | null>(null);
   const rootRef = useRef<HTMLElement | null>(null);
 
   useAutoFitWindow(rootRef, SETTINGS_WIDTH, [tab, notice, config]);
@@ -136,6 +136,22 @@ export default function SettingsWindow() {
         kind: "error",
         text: `切换形象失败：${errorMessage(error)}`,
       });
+    }
+  }
+
+  async function resetPetPosition() {
+    setBusy("reset");
+    setNotice(null);
+    try {
+      await tauriApi.resetPetPosition();
+      setNotice({ kind: "success", text: "形象已移回主屏幕" });
+    } catch (error) {
+      setNotice({
+        kind: "error",
+        text: `重置形象位置失败：${errorMessage(error)}`,
+      });
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -408,6 +424,14 @@ export default function SettingsWindow() {
             <p className="settings-hint">
               关闭后，点到桌面或其他应用会隐藏聊天和设置。桌宠始终显示。
             </p>
+            <button
+              className="settings-btn"
+              type="button"
+              disabled={!config || busy !== null}
+              onClick={() => void resetPetPosition()}
+            >
+              {busy === "reset" ? "重置中…" : "重置形象位置"}
+            </button>
             {notice ? (
               <p
                 className={`settings-notice settings-notice--${notice.kind}`}

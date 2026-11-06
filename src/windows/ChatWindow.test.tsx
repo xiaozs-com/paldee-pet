@@ -93,7 +93,7 @@ class FakeWebSocket {
   onopen: (() => void) | null = null;
   onmessage: ((event: MessageEvent<string>) => void) | null = null;
   onerror: (() => void) | null = null;
-  onclose: (() => void) | null = null;
+  onclose: ((event: CloseEvent) => void) | null = null;
 
   constructor(public url: string) {
     FakeWebSocket.instances.push(this);
@@ -109,7 +109,7 @@ class FakeWebSocket {
 
   emitClose() {
     this.readyState = WebSocket.CLOSED;
-    this.onclose?.();
+    this.onclose?.(new CloseEvent("close", { code: 1006, wasClean: false }));
   }
 
   open() {

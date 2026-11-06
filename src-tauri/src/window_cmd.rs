@@ -834,6 +834,32 @@ pub fn chat_position(
     )
 }
 
+/// Recover a hidden/off-screen pet on the primary display, using physical pixels.
+#[tauri::command]
+pub fn reset_pet_position(app: AppHandle) -> Result<(), String> {
+    let pet = app
+        .get_webview_window("pet")
+        .ok_or_else(|| "pet window not found".to_string())?;
+    let monitor = pet
+        .primary_monitor()
+        .map_err(|error| format!("failed to read primary monitor: {error}"))?
+        .ok_or_else(|| "primary monitor not found".to_string())?;
+    let cfg = crate::config_cmd::load_config(app.clone())?;
+    let size = (cfg.pet_size.clamp(80.0, 224.0) * monitor.scale_factor()).round() as u32;
+    let work = monitor.work_area();
+    let (x, y) = centered_position(
+        (size, size),
+        (work.position.x, work.position.y),
+        (work.size.width, work.size.height),
+    );
+    pet.set_position(PhysicalPosition::new(x, y))
+        .map_err(|error| format!("failed to reset pet position: {error}"))?;
+    pet.show()
+        .map_err(|error| format!("failed to show pet: {error}"))?;
+    ensure_pet_transparent(&app);
+    crate::config_cmd::patch_config(app.clone(), serde_json::json!({ "petX": x, "petY": y }))
+}
+
 fn place_chat_near_pet(app: &AppHandle, chat: &WebviewWindow) -> Result<(), String> {
     let pet = app
         .get_webview_window("pet")

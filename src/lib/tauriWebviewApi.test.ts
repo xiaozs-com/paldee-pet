@@ -1,3 +1,4 @@
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/webviewWindow", () => ({
@@ -27,6 +28,7 @@ vi.mock("@tauri-apps/api/window", () => ({
 
 import {
   clearPetWebviewChrome,
+  setPetWebviewPosition,
   petSupportsManualMotion,
   petUsesManualDrag,
 } from "./tauriWebviewApi";
@@ -88,4 +90,13 @@ describe("clearPetWebviewChrome", () => {
     expect(win.setBackgroundColor).toHaveBeenCalledWith([0, 0, 0, 0]);
     expect(win.setShadow).toHaveBeenCalledWith(false);
   });
+});
+
+it("rounds physical drag and glide coordinates for Tauri integer positions", async () => {
+  const setPosition = vi.fn().mockResolvedValue(undefined);
+  vi.mocked(getCurrentWebviewWindow).mockReturnValue({ setPosition } as never);
+  await setPetWebviewPosition(162.076, -250.625);
+  expect(setPosition).toHaveBeenCalledWith(
+    expect.objectContaining({ x: 162, y: -251 }),
+  );
 });
