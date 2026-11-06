@@ -536,7 +536,7 @@ fn dispatch(app: &tauri::AppHandle, request: Request) -> Value {
         );
     };
     let operation = match request.command.as_str() {
-        "show" => pet.show(),
+        "show" => crate::window_cmd::show_pet(&pet),
         "hide" => {
             for label in ["chat", "settings"] {
                 if let Some(window) = app.get_webview_window(label) {

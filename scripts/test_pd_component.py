@@ -2,6 +2,7 @@
 from __future__ import annotations
 import argparse
 import ctypes
+from ctypes import wintypes
 from concurrent.futures import ThreadPoolExecutor
 import importlib.util
 import json
@@ -253,6 +254,79 @@ class ComponentAcceptance(unittest.TestCase):
                 base_url="https://www.xiaozs.com/sah/components/paldee-pet", pet=path,
                 bridge=self.installation / "pd-device-bridge.exe"))
 
+    def test_pet_bounds_follow_native_moves_and_show(self):
+        """Exercise the actual HWND, including DPI-aware physical right/bottom edges."""
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+        class MonitorInfo(ctypes.Structure):
+            _fields_ = [("cbSize", wintypes.DWORD), ("monitor", wintypes.RECT),
+                        ("work", wintypes.RECT), ("flags", wintypes.DWORD)]
+
+        signatures = {
+            "SetThreadDpiAwarenessContext": ([ctypes.c_void_p], ctypes.c_void_p),
+            "EnumWindows": ([callback_type, wintypes.LPARAM], wintypes.BOOL),
+            "GetWindowThreadProcessId": ([wintypes.HWND, ctypes.POINTER(wintypes.DWORD)], wintypes.DWORD),
+            "IsWindowVisible": ([wintypes.HWND], wintypes.BOOL),
+            "GetWindowRect": ([wintypes.HWND, ctypes.POINTER(wintypes.RECT)], wintypes.BOOL),
+            "GetDpiForWindow": ([wintypes.HWND], wintypes.UINT),
+            "SetWindowPos": ([wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
+                              ctypes.c_int, ctypes.c_int, wintypes.UINT], wintypes.BOOL),
+            "MonitorFromWindow": ([wintypes.HWND, wintypes.DWORD], wintypes.HANDLE),
+            "GetMonitorInfoW": ([wintypes.HANDLE, ctypes.POINTER(MonitorInfo)], wintypes.BOOL),
+        }
+        for name, (arguments, result) in signatures.items():
+            function = getattr(user32, name)
+            function.argtypes, function.restype = arguments, result
+
+        previous_context = user32.SetThreadDpiAwarenessContext(ctypes.c_void_p(-4))
+        self.assertIsNotNone(previous_context)
+        type(self).pet_bounds_dpi = set()
+        try:
+            for x, y in [(-10000, -10000), (10000, 10000)]:
+                self.invoke("stop")
+                config_path = self.user_data / "config.json"
+                config = json.loads(config_path.read_text(encoding="utf-8"))
+                config.update(petX=x, petY=y, petSize=160)
+                config_path.write_text(json.dumps(config), encoding="utf-8")
+                pid = self.invoke("start")["pid"]
+                windows = []
+
+                @callback_type
+                def collect(hwnd, _):
+                    owner = wintypes.DWORD()
+                    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(owner))
+                    if owner.value == pid and user32.IsWindowVisible(hwnd):
+                        rect = wintypes.RECT()
+                        user32.GetWindowRect(hwnd, ctypes.byref(rect))
+                        expected = round(160 * user32.GetDpiForWindow(hwnd) / 96)
+                        if abs(rect.right - rect.left - expected) <= 2 and abs(rect.bottom - rect.top - expected) <= 2:
+                            windows.append(hwnd)
+                    return True
+
+                user32.EnumWindows(collect, 0)
+                self.assertEqual(len(windows), 1, "expected the isolated host's pet window")
+                hwnd = windows[0]
+                self.assertTrue(user32.SetWindowPos(hwnd, None, x, y, 0, 0, 0x0015))
+                self.invoke("show")
+                deadline = time.monotonic() + 5
+                while True:
+                    rect, monitor = wintypes.RECT(), MonitorInfo()
+                    monitor.cbSize = ctypes.sizeof(monitor)
+                    self.assertTrue(user32.GetWindowRect(hwnd, ctypes.byref(rect)))
+                    self.assertTrue(user32.GetMonitorInfoW(user32.MonitorFromWindow(hwnd, 2), ctypes.byref(monitor)))
+                    fits = (rect.left >= monitor.work.left and rect.top >= monitor.work.top and
+                            rect.right <= monitor.work.right and rect.bottom <= monitor.work.bottom)
+                    at_edge = ((rect.left == monitor.work.left and rect.top == monitor.work.top) if x < 0 else
+                               (rect.right == monitor.work.right and rect.bottom == monitor.work.bottom))
+                    if fits and at_edge:
+                        break
+                    self.assertLess(time.monotonic(), deadline, "pet did not clamp its full physical size to the nearest edge")
+                    time.sleep(0.05)
+                type(self).pet_bounds_dpi.add(user32.GetDpiForWindow(hwnd))
+        finally:
+            user32.SetThreadDpiAwarenessContext(previous_context)
+
     def test_zz_uninstall_preserves_independent_user_data(self):
         self.invoke("start")
         self.invoke("stop")
@@ -274,7 +348,8 @@ def main():
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     report = {"tests": result.testsRun, "failures": len(result.failures), "errors": len(result.errors),
               "skipped": len(result.skipped), "success": result.wasSuccessful(),
-              "scope": "isolated Windows x64 package; Chinese/space installation path; no helper GUI integration"}
+              "scope": "isolated Windows x64 package; Chinese/space installation path; native pet bounds; no helper GUI integration",
+              "pet_bounds_dpi": sorted(getattr(ComponentAcceptance, "pet_bounds_dpi", set()))}
     OPTIONS.report.parent.mkdir(parents=True, exist_ok=True)
     OPTIONS.report.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     raise SystemExit(0 if result.wasSuccessful() else 1)

@@ -99,13 +99,6 @@ describe("PetWindow", () => {
           },
         },
       ],
-      primary: {
-        scaleFactor: 1,
-        workArea: {
-          position: { x: 0, y: 0 },
-          size: { width: 1920, height: 1040 },
-        },
-      },
     });
     mocks.onPetWebviewScaleChanged.mockResolvedValue(vi.fn());
     mocks.setPetWebviewLogicalSize.mockResolvedValue(undefined);
@@ -272,9 +265,61 @@ describe("PetWindow", () => {
     mocks.onPetWebviewMoved.mockResolvedValue(vi.fn());
     render(<PetWindow />);
     await waitFor(() =>
-      expect(mocks.setPetWebviewPosition).toHaveBeenCalledWith(880, 440),
+      expect(mocks.setPetWebviewPosition).toHaveBeenCalledWith(0, 200),
     );
-    expect(mocks.patchConfig).toHaveBeenCalledWith({ petX: 880, petY: 440 });
+    expect(mocks.patchConfig).toHaveBeenCalledWith({ petX: 0, petY: 200 });
+  });
+
+  it("keeps the entire restored pet visible at the bottom-right edge at 125%", async () => {
+    const desktop = await mocks.getPetDesktop();
+    mocks.getPetDesktop.mockResolvedValue({
+      ...desktop,
+      scaleFactor: 1.25,
+      monitors: [
+        {
+          scaleFactor: 1.25,
+          workArea: {
+            position: { x: 0, y: 40 },
+            size: { width: 1920, height: 1040 },
+          },
+        },
+      ],
+    });
+    mocks.loadConfig.mockResolvedValue({
+      ...DEFAULT_APP_CONFIG,
+      petX: 1900,
+      petY: 1050,
+    });
+    mocks.onPetWebviewMoved.mockResolvedValue(vi.fn());
+    render(<PetWindow />);
+    await waitFor(() =>
+      expect(mocks.setPetWebviewPosition).toHaveBeenCalledWith(1720, 880),
+    );
+    expect(mocks.patchConfig).toHaveBeenCalledWith({ petX: 1720, petY: 880 });
+  });
+
+  it("clamps a manual drag before positioning the pet at 125%", async () => {
+    const desktop = await mocks.getPetDesktop();
+    mocks.getPetDesktop.mockResolvedValue({
+      ...desktop,
+      scaleFactor: 1.25,
+      monitors: [
+        {
+          scaleFactor: 1.25,
+          workArea: {
+            position: { x: 0, y: 40 },
+            size: { width: 1920, height: 1040 },
+          },
+        },
+      ],
+    });
+    mocks.petSupportsManualMotion.mockReturnValue(true);
+    render(<PetWindow />);
+    await waitFor(() => expect(mocks.onPetWebviewMoved).toHaveBeenCalled());
+    const region = screen.getByTestId("pet-drag-region");
+    fireEvent.pointerDown(region, { clientX: 10, clientY: 10, button: 0 });
+    fireEvent.pointerMove(region, { clientX: 2010, clientY: 2010 });
+    expect(mocks.setPetWebviewPosition).toHaveBeenLastCalledWith(1720, 880);
   });
 
   it("preserves a saved physical position on an attached mixed-DPI secondary monitor", async () => {

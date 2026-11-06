@@ -12,8 +12,9 @@ use paldee_pet_lib::{
     },
     window_cmd::{
         bottom_anchored_position, bottom_centered_position, centered_position, chat_position,
-        home_url, should_hide_on_close, should_hide_on_unfocus, transparent_chrome_target,
-        TransparentChromeTarget, CHAT_BOTTOM_GAP_LOGICAL, RESIZE_ANIMATION_DURATION,
+        clamp_pet_position, home_url, should_hide_on_close, should_hide_on_unfocus,
+        transparent_chrome_target, TransparentChromeTarget, CHAT_BOTTOM_GAP_LOGICAL,
+        RESIZE_ANIMATION_DURATION,
     },
 };
 
@@ -335,4 +336,51 @@ fn transparent_chrome_targets_pet_and_dialogs() {
         Some(TransparentChromeTarget::Dialog)
     );
     assert_eq!(transparent_chrome_target("tray"), None);
+}
+
+#[test]
+fn pet_clamps_125_percent_physical_size_to_nearest_work_area_edges() {
+    let areas = [((0, 40), (1920, 1040))];
+    assert_eq!(
+        clamp_pet_position((1900, 1050), (200, 200), &areas),
+        (1720, 880)
+    );
+    assert_eq!(
+        clamp_pet_position((-100, -100), (200, 200), &areas),
+        (0, 40)
+    );
+    assert_eq!(
+        clamp_pet_position((120, 240), (200, 200), &areas),
+        (120, 240)
+    );
+}
+
+#[test]
+fn pet_clamps_to_the_nearest_display_and_preserves_secondary_positions() {
+    let areas = [((0, 40), (1920, 1040)), ((-2560, -200), (2560, 1400))];
+    assert_eq!(
+        clamp_pet_position((-2000, -100), (240, 240), &areas),
+        (-2000, -100)
+    );
+    assert_eq!(
+        clamp_pet_position((-9999, -100), (240, 240), &areas),
+        (-2560, -100)
+    );
+    assert_eq!(
+        clamp_pet_position((-200, 100), (240, 240), &areas),
+        (-240, 100)
+    );
+    assert_eq!(
+        clamp_pet_position((-1800, 200), (200, 200), &areas[..1]),
+        (0, 200)
+    );
+}
+
+#[test]
+fn pet_geometry_handles_an_unavailable_or_smaller_work_area() {
+    assert_eq!(clamp_pet_position((120, 240), (200, 200), &[]), (120, 240));
+    assert_eq!(
+        clamp_pet_position((120, 240), (200, 200), &[((0, 40), (100, 100))]),
+        (0, 40)
+    );
 }

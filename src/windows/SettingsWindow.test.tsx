@@ -27,7 +27,6 @@ const mocks = vi.hoisted(() => ({
   listenWindowShown: vi.fn(),
   hideCurrentWindow: vi.fn(),
   applyWindowDeactivatePolicy: vi.fn(),
-  resetPetPosition: vi.fn(),
 }));
 
 vi.mock("../lib/tauriApi", () => ({
@@ -44,7 +43,6 @@ vi.mock("../lib/tauriApi", () => ({
     listenMascotChanged: mocks.listenMascotChanged,
     listenWindowShown: mocks.listenWindowShown,
     applyWindowDeactivatePolicy: mocks.applyWindowDeactivatePolicy,
-    resetPetPosition: mocks.resetPetPosition,
   },
 }));
 
@@ -80,7 +78,6 @@ describe("SettingsWindow", () => {
       key === "password" ? "secret-password" : null,
     );
     mocks.patchConfig.mockResolvedValue(undefined);
-    mocks.resetPetPosition.mockResolvedValue(undefined);
     mocks.setSecret.mockResolvedValue(undefined);
     mocks.emitAuthUpdated.mockResolvedValue(undefined);
     mocks.reloadHotkeys.mockResolvedValue(undefined);
@@ -96,28 +93,15 @@ describe("SettingsWindow", () => {
     });
   });
 
-  it("resets the mascot position from the window settings tab", async () => {
+  it("keeps the window settings free of a manual position recovery action", async () => {
     render(<SettingsWindow />);
-    await waitFor(() => expect(mocks.loadConfig).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("tab", { name: "窗口" }));
-    fireEvent.click(screen.getByRole("button", { name: "重置形象位置" }));
-    await waitFor(() => expect(mocks.resetPetPosition).toHaveBeenCalledOnce());
-    expect(await screen.findByRole("status")).toHaveTextContent(
-      "形象已移回主屏幕",
-    );
-  });
-
-  it("reports a failed position reset in settings", async () => {
-    mocks.resetPetPosition.mockRejectedValueOnce(
-      new Error("monitor unavailable"),
-    );
-    render(<SettingsWindow />);
-    await waitFor(() => expect(mocks.loadConfig).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole("tab", { name: "窗口" }));
-    fireEvent.click(screen.getByRole("button", { name: "重置形象位置" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "重置形象位置失败：monitor unavailable",
-    );
+    expect(
+      await screen.findByLabelText("点击其他应用时保持窗口显示"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "重置形象位置" }),
+    ).not.toBeInTheDocument();
   });
 
   it("places the close control on the left on macOS", async () => {

@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Fix pet dragging and inertia at Windows display scaling (including 125%), recover off-screen positions on startup, and add a window-settings action to reset the mascot to the primary display.
+- Keep the entire pet inside the nearest monitor work area at display scaling including 125% when shown, dragged, resized, or scaled; automatically clamp to the closest edge and remove the manual reset button from settings.
 
 - Connect the tray update check to the Helper optional-component update service through Device Bridge; requires the Helper `cli components check-update` entry point.
 

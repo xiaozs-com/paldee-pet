@@ -53,9 +53,8 @@ pub fn open_pet(app: &AppHandle) -> Result<(), String> {
     let pet = app
         .get_webview_window("pet")
         .ok_or_else(|| "pet window not found".to_string())?;
-    pet.show()
+    crate::window_cmd::show_pet(&pet)
         .map_err(|error| format!("failed to show pet window: {error}"))?;
-    crate::window_cmd::ensure_pet_transparent(app);
     show_chat_near_pet(app.clone())
 }
 

@@ -834,30 +834,60 @@ pub fn chat_position(
     )
 }
 
-/// Recover a hidden/off-screen pet on the primary display, using physical pixels.
-#[tauri::command]
-pub fn reset_pet_position(app: AppHandle) -> Result<(), String> {
-    let pet = app
-        .get_webview_window("pet")
-        .ok_or_else(|| "pet window not found".to_string())?;
-    let monitor = pet
-        .primary_monitor()
-        .map_err(|error| format!("failed to read primary monitor: {error}"))?
-        .ok_or_else(|| "primary monitor not found".to_string())?;
-    let cfg = crate::config_cmd::load_config(app.clone())?;
-    let size = (cfg.pet_size.clamp(80.0, 224.0) * monitor.scale_factor()).round() as u32;
-    let work = monitor.work_area();
-    let (x, y) = centered_position(
-        (size, size),
-        (work.position.x, work.position.y),
-        (work.size.width, work.size.height),
-    );
-    pet.set_position(PhysicalPosition::new(x, y))
-        .map_err(|error| format!("failed to reset pet position: {error}"))?;
-    pet.show()
-        .map_err(|error| format!("failed to show pet: {error}"))?;
-    ensure_pet_transparent(&app);
-    crate::config_cmd::patch_config(app.clone(), serde_json::json!({ "petX": x, "petY": y }))
+pub type PetWorkArea = ((i32, i32), (u32, u32));
+
+/// Keep the entire physical window in the closest monitor work area.
+pub fn clamp_pet_position(
+    position: (i32, i32),
+    size: (u32, u32),
+    work_areas: &[PetWorkArea],
+) -> (i32, i32) {
+    work_areas
+        .iter()
+        .map(|(origin, work_size)| {
+            let left = i64::from(origin.0);
+            let top = i64::from(origin.1);
+            let right = (left + i64::from(work_size.0) - i64::from(size.0)).max(left);
+            let bottom = (top + i64::from(work_size.1) - i64::from(size.1)).max(top);
+            (
+                i64::from(position.0).clamp(left, right) as i32,
+                i64::from(position.1).clamp(top, bottom) as i32,
+            )
+        })
+        .min_by_key(|candidate| {
+            let dx = i128::from(candidate.0) - i128::from(position.0);
+            let dy = i128::from(candidate.1) - i128::from(position.1);
+            dx * dx + dy * dy
+        })
+        .unwrap_or(position)
+}
+
+pub fn keep_pet_in_work_area(pet: &WebviewWindow) -> tauri::Result<()> {
+    let position = pet.outer_position()?;
+    let size = pet.outer_size()?;
+    let areas: Vec<PetWorkArea> = pet
+        .available_monitors()?
+        .iter()
+        .map(|monitor| {
+            let work = monitor.work_area();
+            (
+                (work.position.x, work.position.y),
+                (work.size.width, work.size.height),
+            )
+        })
+        .collect();
+    let (x, y) = clamp_pet_position((position.x, position.y), (size.width, size.height), &areas);
+    if x != position.x || y != position.y {
+        pet.set_position(PhysicalPosition::new(x, y))?;
+    }
+    Ok(())
+}
+
+pub fn show_pet(pet: &WebviewWindow) -> tauri::Result<()> {
+    keep_pet_in_work_area(pet)?;
+    pet.show()?;
+    ensure_pet_transparent(pet.app_handle());
+    Ok(())
 }
 
 fn place_chat_near_pet(app: &AppHandle, chat: &WebviewWindow) -> Result<(), String> {

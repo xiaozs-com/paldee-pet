@@ -1,3 +1,5 @@
+use tauri::Manager;
+
 #[cfg(windows)]
 pub mod component_runtime;
 #[cfg(target_os = "macos")]
@@ -24,22 +26,39 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .on_window_event(|window, event| match event {
-            tauri::WindowEvent::CloseRequested { api, .. } => {
-                if window_cmd::should_hide_on_close(window.label()) {
-                    api.prevent_close();
-                    if let Err(error) = window.hide() {
-                        eprintln!("failed to hide {} window: {error}", window.label());
+        .on_window_event(|window, event| {
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    if window_cmd::should_hide_on_close(window.label()) {
+                        api.prevent_close();
+                        if let Err(error) = window.hide() {
+                            eprintln!("failed to hide {} window: {error}", window.label());
+                        }
+                    }
+                }
+                tauri::WindowEvent::Focused(focused) => {
+                    window_cmd::handle_window_focus_change(window, *focused);
+                }
+                tauri::WindowEvent::ThemeChanged(_)
+                | tauri::WindowEvent::ScaleFactorChanged { .. } => {
+                    window_cmd::ensure_window_surface_transparent(window);
+                }
+                _ => {}
+            }
+            if window.label() == "pet"
+                && matches!(
+                    event,
+                    tauri::WindowEvent::Moved(_)
+                        | tauri::WindowEvent::Resized(_)
+                        | tauri::WindowEvent::ScaleFactorChanged { .. }
+                )
+            {
+                if let Some(pet) = window.app_handle().get_webview_window("pet") {
+                    if let Err(error) = window_cmd::keep_pet_in_work_area(&pet) {
+                        eprintln!("failed to keep pet on screen: {error}");
                     }
                 }
             }
-            tauri::WindowEvent::Focused(focused) => {
-                window_cmd::handle_window_focus_change(window, *focused);
-            }
-            tauri::WindowEvent::ThemeChanged(_) | tauri::WindowEvent::ScaleFactorChanged { .. } => {
-                window_cmd::ensure_window_surface_transparent(window);
-            }
-            _ => {}
         })
         .setup(move |app| {
             #[cfg(windows)]
@@ -78,7 +97,6 @@ pub fn run() {
             window_cmd::show_chat_near_pet,
             window_cmd::hide_chat,
             window_cmd::hide_pet,
-            window_cmd::reset_pet_position,
             window_cmd::show_settings,
             window_cmd::place_window_bottom_center,
             window_cmd::place_window_centered,

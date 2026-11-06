@@ -1,7 +1,6 @@
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import {
   availableMonitors,
-  primaryMonitor,
   LogicalSize,
   PhysicalPosition,
 } from "@tauri-apps/api/window";
@@ -49,13 +48,12 @@ export async function setPetWebviewPosition(
 
 export async function getPetDesktop() {
   const win = getPetWebviewWindow();
-  const [monitors, primary, position, scaleFactor] = await Promise.all([
+  const [monitors, position, scaleFactor] = await Promise.all([
     availableMonitors(),
-    primaryMonitor(),
     win.outerPosition(),
     win.scaleFactor(),
   ]);
-  return { monitors, primary, position, scaleFactor };
+  return { monitors, position, scaleFactor };
 }
 
 export async function onPetWebviewScaleChanged(

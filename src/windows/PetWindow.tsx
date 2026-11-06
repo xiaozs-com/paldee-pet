@@ -3,11 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import MascotImage from "../components/MascotImage";
 import { DEFAULT_APP_CONFIG, MASCOT_SRC } from "../lib/configLogic";
 import { showPetContextMenu } from "../lib/petContextMenu";
-import {
-  centeredPetPosition,
-  petIntersectsMonitor,
-  type PetMonitor,
-} from "../lib/petPosition";
+import { clampPetPosition, type PetMonitor } from "../lib/petPosition";
 import { tauriApi } from "../lib/tauriApi";
 import {
   clearPetWebviewChrome,
@@ -100,23 +96,27 @@ export default function PetWindow() {
       if (disposed) return;
       scaleFactorRef.current = desktop.scaleFactor;
       monitorsRef.current = desktop.monitors;
-      let position =
+      const savedPosition =
         config.petX !== null && config.petY !== null
           ? { x: config.petX, y: config.petY }
           : desktop.position;
-      if (
-        !desktop.monitors.some((monitor) =>
-          petIntersectsMonitor(position, petSizeRef.current, monitor),
-        ) &&
-        desktop.primary
-      ) {
-        position = centeredPetPosition(petSizeRef.current, desktop.primary);
+      const position = clampPetPosition(
+        savedPosition,
+        petSizeRef.current,
+        desktop.monitors,
+      );
+      if (position.x !== savedPosition.x || position.y !== savedPosition.y) {
         await tauriApi.patchConfig({ petX: position.x, petY: position.y });
       }
       lastPositionRef.current = position;
       observedPositionRef.current = position;
       await onPetWebviewScaleChanged((scaleFactor) => {
         scaleFactorRef.current = scaleFactor;
+        void getPetDesktop()
+          .then((updated) => {
+            if (!disposed) monitorsRef.current = updated.monitors;
+          })
+          .catch((error) => console.error("更新显示器工作区失败", error));
       }).then(registerUnlistener);
       if (disposed) return;
       await setPetWebviewPosition(position.x, position.y);
@@ -208,6 +208,11 @@ export default function PetWindow() {
       glideFrameRef.current = null;
     }
     clearPetSelection();
+    void getPetDesktop()
+      .then((updated) => {
+        monitorsRef.current = updated.monitors;
+      })
+      .catch((error) => console.error("更新显示器工作区失败", error));
     pointerDownRef.current = true;
     movedSincePointerDownRef.current = false;
     dragStartedRef.current = false;
@@ -233,14 +238,18 @@ export default function PetWindow() {
     movedSincePointerDownRef.current = true;
     if (petSupportsManualMotion()) {
       dragStartedRef.current = true;
-      const position = {
-        x:
-          observedPositionRef.current.x +
-          (event.clientX - grabOffsetRef.current.x) * scaleFactorRef.current,
-        y:
-          observedPositionRef.current.y +
-          (event.clientY - grabOffsetRef.current.y) * scaleFactorRef.current,
-      };
+      const position = clampPetPosition(
+        {
+          x:
+            observedPositionRef.current.x +
+            (event.clientX - grabOffsetRef.current.x) * scaleFactorRef.current,
+          y:
+            observedPositionRef.current.y +
+            (event.clientY - grabOffsetRef.current.y) * scaleFactorRef.current,
+        },
+        petSizeRef.current,
+        monitorsRef.current,
+      );
       lastPositionRef.current = position;
       const now = performance.now();
       pointerSamplesRef.current = [
@@ -283,38 +292,17 @@ export default function PetWindow() {
       );
       vx *= friction;
       vy *= friction;
-      let position = {
+      const requested = {
         x: lastPositionRef.current.x + vx * elapsedMs,
         y: lastPositionRef.current.y + vy * elapsedMs,
       };
-      const current = lastPositionRef.current;
-      const size = petSizeRef.current * scaleFactorRef.current;
-      // Prefer the display containing the pet's center when it straddles a seam.
-      const monitor =
-        monitorsRef.current.find(
-          ({ workArea }) =>
-            current.x + size / 2 >= workArea.position.x &&
-            current.x + size / 2 < workArea.position.x + workArea.size.width &&
-            current.y + size / 2 >= workArea.position.y &&
-            current.y + size / 2 < workArea.position.y + workArea.size.height,
-        ) ??
-        monitorsRef.current.find((candidate) =>
-          petIntersectsMonitor(current, petSizeRef.current, candidate),
-        );
-      if (monitor) {
-        const { position: origin, size: workSize } = monitor.workArea;
-        const left = origin.x;
-        const top = origin.y;
-        const right = Math.max(left, left + workSize.width - size);
-        const bottom = Math.max(top, top + workSize.height - size);
-        const clamped = {
-          x: Math.min(right, Math.max(left, position.x)),
-          y: Math.min(bottom, Math.max(top, position.y)),
-        };
-        if (clamped.x !== position.x) vx = 0;
-        if (clamped.y !== position.y) vy = 0;
-        position = clamped;
-      }
+      const position = clampPetPosition(
+        requested,
+        petSizeRef.current,
+        monitorsRef.current,
+      );
+      if (position.x !== requested.x) vx = 0;
+      if (position.y !== requested.y) vy = 0;
       lastPositionRef.current = position;
       void setPetWebviewPosition(position.x, position.y);
 
